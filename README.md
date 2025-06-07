@@ -138,3 +138,27 @@ No requiere pasos adicionales. Simplemente abre `http://localhost:8000` en tu na
 6.  **Gestiona tus conversaciones:** Usa los botones "Nueva conversación" para empezar de cero o "Historial" para ver y cargar chats anteriores.
 
 ## Estructura del Proyecto
+/unab-ia-mentor
+├── /pdfs/
+│   └── tu_documento.pdf       # Documentos fuente para el RAG
+├── /chroma_db/                # Base de datos vectorial (generada)
+├── app.py                     # Lógica del backend (FastAPI)
+├── chat.js                    # Lógica del frontend (JavaScript)
+├── index.html                 # Página principal del chat
+├── index.css                  # Hoja de estilos
+├── login.html                 # (Opcional) Página de login separada
+├── .env                       # Archivo de configuración (local)
+└── README.md                  # Este archivo
+
+
+## Futuras Mejoras
+
+- [ ] Implementar un sistema de caché más avanzado para las respuestas comunes.
+- [ ] Soporte para más tipos de documentos (.docx, .txt).
+- [ ] Mejorar la interfaz de usuario con un framework como React o Vue.js.
+- [ ] Panel de administración para visualizar el feedback de los usuarios.
+- [ ] Desplegar la aplicación en un servicio en la nube (ej. AWS, Google Cloud).
+
+## Licencia
+
+Distribuido bajo la Licencia MIT. Ver `LICENSE` para más información.
