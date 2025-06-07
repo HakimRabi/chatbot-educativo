@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Función modificada para agregar un mensaje al chat
+    // Función modificada para agregar un mensaje al chat con soporte de markdown mejorado
     function addMessage(message, sender, saveToHistory = true) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
@@ -130,7 +130,253 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Crear contenedor de contenido para separarlo del feedback
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
-        contentDiv.textContent = message;
+        
+        // Si es un mensaje del bot, renderizar markdown
+        if (sender === 'bot') {
+            // Configurar marked para un renderizado más avanzado
+            marked.setOptions({
+                breaks: true,        // Convertir saltos de línea simples
+                gfm: true,          // GitHub Flavored Markdown
+                sanitize: false,    // Permitir HTML seguro
+                smartLists: true,   // Listas inteligentes
+                smartypants: true,  // Tipografía inteligente
+                headerIds: false,   // No generar IDs para headers
+                mangle: false,      // No cambiar emails
+                pedantic: false,    // No ser estricto con markdown
+                silent: true        // No mostrar errores en consola
+            });
+            
+            // Pre-procesamiento mejorado para mejor formato
+            let processedMessage = message;
+            
+            // Limpiar el mensaje de espacios innecesarios y normalizar saltos de línea
+            processedMessage = processedMessage
+                // Normalizar espacios múltiples
+                .replace(/[ \t]+/g, ' ')
+
+                // Normalizar saltos de línea múltiples (máximo 2)
+                .replace(/\n{3,}/g, '\n\n')
+                
+                // Mejorar formato de listas con viñetas
+                .replace(/^[•·]\s+/gm, '- ')
+                .replace(/^\*\s+/gm, '- ')
+                .replace(/^-\s+/gm, '- ')
+                
+                // Asegurar espaciado correcto para listas numeradas
+                .replace(/^(\d+)\.\s+/gm, '$1. ')
+                
+                // Convertir texto en negritas si no está marcado (patrones comunes)
+                .replace(/\b([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?: [A-Za-záéíóúñ]+)*?):\s/g, '**$1:** ')
+                
+                // Mejorar formato de conceptos clave
+                .replace(/^(Definición|Características|Aplicaciones|Ejemplos|Ventajas|Desventajas|Tipos|Clasificación|Conclusión):\s*/gmi, '**$1:** ')
+                
+                // Convertir enumeraciones simples a listas markdown
+                .replace(/^(\d+)\)\s+/gm, '$1. ')
+                .replace(/^([a-z])\)\s+/gm, '- ')
+                
+                // Mejorar separadores
+                .replace(/^[-=]{3,}$/gm, '\n---\n')
+                
+                // Asegurar que las líneas no terminen con espacios
+                .replace(/[ \t]+$/gm, '')
+                
+                // LÍNEA PROBLEMÁTICA ELIMINADA - Esta causaba el corte de palabras
+                // .replace(/(\S{60})(\S)/g, '$1 $2');
+                
+                // Opcional: Mejorar saltos de línea preservando palabras completas
+                .replace(/(.{80,}?)\s+/g, function(match, p1) {
+                    // Solo agregar salto si la línea es muy larga y hay un espacio natural
+                    return p1.length > 100 ? p1 + '\n' : match;
+                });
+    
+            // Renderizar markdown a HTML con manejo de errores
+            let htmlContent;
+            try {
+                htmlContent = marked.parse(processedMessage);
+            } catch (error) {
+                console.warn('Error al procesar markdown, usando texto plano:', error);
+                htmlContent = `<p>${processedMessage.replace(/\n/g, '<br>')}</p>`;
+            }
+            
+            
+            // Post-procesamiento del HTML para mejorar la presentación
+            htmlContent = htmlContent
+                // Agregar clases CSS específicas para mejor estilo
+                .replace(/<h([1-6])>/g, '<h$1 class="bot-heading">')
+                .replace(/<p>/g, '<p class="bot-paragraph">')
+                .replace(/<ul>/g, '<ul class="bot-list">')
+                .replace(/<ol>/g, '<ol class="bot-list-ordered">')
+                .replace(/<li>/g, '<li class="bot-list-item">')
+                .replace(/<strong>/g, '<strong class="bot-bold">')
+                .replace(/<em>/g, '<em class="bot-italic">')
+                .replace(/<code>/g, '<code class="bot-code">')
+                .replace(/<pre><code>/g, '<pre class="bot-code-block"><code>')
+                .replace(/<pre>/g, '<pre class="bot-code-block">')
+                .replace(/<blockquote>/g, '<blockquote class="bot-quote">')
+                .replace(/<hr>/g, '<hr class="bot-separator">')
+                
+                // Limpiar párrafos vacíos
+                .replace(/<p class="bot-paragraph">\s*<\/p>/g, '')
+                .replace(/<p>\s*<\/p>/g, '')
+                
+                // Mejorar espaciado en listas
+                .replace(/(<\/li>)\s*(<li)/g, '$1\n$2')
+                
+                // Asegurar que el código inline no se rompa
+                .replace(/<code class="bot-code">([^<]*)<\/code>/g, (match, content) => {
+                    // Evitar saltos de línea dentro del código inline
+                    const cleanContent = content.replace(/\s+/g, ' ').trim();
+                    return `<code class="bot-code">${cleanContent}</code>`;
+                });
+            
+            contentDiv.innerHTML = htmlContent;
+            
+            // Mejorar el estilo después del renderizado con mejor manejo de errores
+            setTimeout(() => {
+                try {
+                    // Aplicar estilos adicionales a elementos específicos
+                    contentDiv.querySelectorAll('p').forEach((p, index) => {
+                        if (p.textContent.trim() === '') {
+                            p.style.display = 'none';
+                        } else {
+                            // Agregar espaciado entre párrafos
+                            if (index > 0) {
+                                p.style.marginTop = '12px';
+                            }
+                            // Mejorar el manejo de texto largo
+                            p.style.wordWrap = 'break-word';
+                            p.style.overflowWrap = 'break-word';
+                            p.style.hyphens = 'auto';
+                        }
+                    });
+                    
+                    // Mejorar listas
+                    contentDiv.querySelectorAll('ul, ol').forEach(list => {
+                        list.style.marginLeft = '20px';
+                        list.style.marginBottom = '12px';
+                        list.style.marginTop = '8px';
+                        list.style.wordWrap = 'break-word';
+                        
+                        // Espaciado entre elementos de lista
+                        list.querySelectorAll('li').forEach(li => {
+                            li.style.marginBottom = '6px';
+                            li.style.lineHeight = '1.6';
+                            li.style.wordWrap = 'break-word';
+                            li.style.overflowWrap = 'break-word';
+                            li.style.hyphens = 'auto';
+                        });
+                    });
+                    
+                    // Mejorar elementos en negrita
+                    contentDiv.querySelectorAll('strong').forEach(strong => {
+                        strong.style.color = '#0056b3';
+                        strong.style.fontWeight = '600';
+                        strong.style.fontSize = '1.02em';
+                        strong.style.wordWrap = 'break-word';
+                    });
+                    
+                    // Mejorar elementos en cursiva
+                    contentDiv.querySelectorAll('em').forEach(em => {
+                        em.style.color = '#555';
+                        em.style.fontStyle = 'italic';
+                        em.style.backgroundColor = 'rgba(0, 123, 255, 0.05)';
+                        em.style.padding = '1px 3px';
+                        em.style.borderRadius = '3px';
+                        em.style.wordWrap = 'break-word';
+                    });
+                    
+                    // Mejorar encabezados
+                    contentDiv.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(heading => {
+                        heading.style.color = '#0056b3';
+                        heading.style.marginTop = '16px';
+                        heading.style.marginBottom = '8px';
+                        heading.style.fontWeight = '600';
+                        heading.style.borderBottom = '1px solid #e9ecef';
+                        heading.style.paddingBottom = '4px';
+                        heading.style.wordWrap = 'break-word';
+                        heading.style.hyphens = 'auto';
+                    });
+                    
+                    // Mejorar código inline
+                    contentDiv.querySelectorAll('code:not(pre code)').forEach(code => {
+                        code.style.backgroundColor = '#f8f9fa';
+                        code.style.padding = '2px 6px';
+                        code.style.borderRadius = '4px';
+                        code.style.fontFamily = '"SFMono-Regular", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
+                        code.style.fontSize = '0.9em';
+                        code.style.color = '#e83e8c';
+                        code.style.border = '1px solid #e9ecef';
+                        code.style.whiteSpace = 'pre-wrap';
+                        code.style.wordWrap = 'break-word';
+                    });
+                    
+                    // Mejorar bloques de código
+                    contentDiv.querySelectorAll('pre').forEach(pre => {
+                        pre.style.backgroundColor = '#f8f9fa';
+                        pre.style.border = '1px solid #e9ecef';
+                        pre.style.borderRadius = '6px';
+                        pre.style.padding = '16px';
+                        pre.style.margin = '12px 0';
+                        pre.style.overflow = 'auto';
+                        pre.style.fontFamily = '"SFMono-Regular", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
+                        pre.style.fontSize = '0.9em';
+                        pre.style.lineHeight = '1.4';
+                        pre.style.whiteSpace = 'pre-wrap';
+                        pre.style.wordWrap = 'break-word';
+                    });
+                    
+                    // Mejorar citas
+                    contentDiv.querySelectorAll('blockquote').forEach(quote => {
+                        quote.style.borderLeft = '4px solid #007bff';
+                        quote.style.paddingLeft = '16px';
+                        quote.style.margin = '16px 0';
+                        quote.style.color = '#555';
+                        quote.style.fontStyle = 'italic';
+                        quote.style.backgroundColor = 'rgba(0, 123, 255, 0.05)';
+                        quote.style.padding = '12px 16px';
+                        quote.style.borderRadius = '0 6px 6px 0';
+                        quote.style.wordWrap = 'break-word';
+                        quote.style.hyphens = 'auto';
+                    });
+                    
+                    // Mejorar separadores
+                    contentDiv.querySelectorAll('hr').forEach(hr => {
+                        hr.style.border = 'none';
+                        hr.style.borderTop = '2px solid #e9ecef';
+                        hr.style.margin = '20px 0';
+                        hr.style.opacity = '0.7';
+                    });
+                    
+                    // Aplicar estilos generales para mejor renderizado de texto
+                    contentDiv.style.textRendering = 'optimizeLegibility';
+                    contentDiv.style.webkitFontSmoothing = 'antialiased';
+                    contentDiv.style.mozOsxFontSmoothing = 'grayscale';
+                    
+                    // Agregar efectos de transición suaves
+                    contentDiv.style.opacity = '0';
+                    contentDiv.style.transform = 'translateY(10px)';
+                    contentDiv.style.transition = 'all 0.3s ease-out';
+                    
+                    setTimeout(() => {
+                        contentDiv.style.opacity = '1';
+                        contentDiv.style.transform = 'translateY(0)';
+                    }, 50);
+                    
+                } catch (styleError) {
+                    console.warn('Error al aplicar estilos:', styleError);
+                }
+            }, 100);
+            
+        } else {
+            // Para mensajes del usuario, usar texto plano con mejor formato
+            contentDiv.textContent = message;
+            contentDiv.style.wordWrap = 'break-word';
+            contentDiv.style.overflowWrap = 'break-word';
+            contentDiv.style.lineHeight = '1.4';
+            contentDiv.style.hyphens = 'auto';
+        }
+        
         messageDiv.appendChild(contentDiv);
         
         // Si es un mensaje del bot, añadir sistema de feedback
@@ -168,23 +414,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                 star.addEventListener('click', function() {
                     const rating = parseInt(this.getAttribute('data-value'));
                     
-                    // Marcar estrellas seleccionadas
+                    // Marcar estrellas seleccionadas con animación
                     const stars = this.parentNode.querySelectorAll('.star');
-                    stars.forEach(s => {
+                    stars.forEach((s, index) => {
                         if (parseInt(s.getAttribute('data-value')) <= rating) {
                             s.classList.add('selected');
+                            // Animación escalonada
+                            setTimeout(() => {
+                                s.style.transform = 'scale(1.2)';
+                                setTimeout(() => {
+                                    s.style.transform = 'scale(1.1)';
+                                }, 150);
+                            }, index * 50);
                         } else {
                             s.classList.remove('selected');
+                            s.style.transform = 'scale(1)';
                         }
                     });
                     
                     // Guardar el rating en la variable local
                     messageRatings[message] = rating;
                     
-                    // Mostrar campo de comentario
+                    // Mostrar campo de comentario con animación
                     const commentContainer = this.parentNode.parentNode.querySelector('.feedback-comment-container');
                     if (commentContainer) {
                         commentContainer.style.display = 'block';
+                        
+                        // Habilitar botón de envío
+                        const sendButton = commentContainer.querySelector('.feedback-send-button');
+                        if (sendButton) {
+                            sendButton.disabled = false;
+                        }
                     }
                 });
                 
@@ -199,39 +459,131 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Campo de texto para el comentario
             const commentInput = document.createElement('textarea');
             commentInput.className = 'feedback-comment';
-            commentInput.placeholder = 'Escribe un comentario adicional (opcional)';
+            commentInput.placeholder = 'Comentario opcional (máx. 300 caracteres)';
             commentInput.rows = 2;
+            commentInput.maxLength = 300;
+            
+            // Contador de caracteres
+            const charCounter = document.createElement('div');
+            charCounter.className = 'char-counter';
+            charCounter.style.cssText = `
+                text-align: right;
+                font-size: 10px;
+                color: #6c757d;
+                margin-top: 3px;
+                font-family: monospace;
+            `;
+            charCounter.textContent = '0 / 300';
+            
+            // Actualizar contador de caracteres
+            commentInput.addEventListener('input', function() {
+                const currentLength = this.value.length;
+                charCounter.textContent = `${currentLength} / 300`;
+                
+                // Cambiar color cuando se acerca al límite
+                if (currentLength > 270) {
+                    charCounter.style.color = '#dc3545';
+                } else if (currentLength > 240) {
+                    charCounter.style.color = '#ffc107';
+                } else {
+                    charCounter.style.color = '#6c757d';
+                }
+                
+                // Habilitar/deshabilitar botón según contenido
+                const sendButton = this.parentNode.querySelector('.feedback-send-button');
+                if (sendButton) {
+                    const rating = messageRatings[message];
+                    sendButton.disabled = !rating || rating < 1;
+                }
+            });
             
             // Botón para enviar el comentario
             const sendButton = document.createElement('button');
             sendButton.className = 'feedback-send-button';
-            sendButton.textContent = 'Enviar feedback';
+            sendButton.innerHTML = '📤 Enviar';
+            sendButton.disabled = true; // Inicialmente deshabilitado
+            
             sendButton.addEventListener('click', function() {
                 const rating = messageRatings[message];
                 const comentario = commentInput.value.trim();
                 
-                // Enviar feedback con comentario
-                sendFeedback(rating, comentario);
-                
-                // Mostrar mensaje de confirmación
-                const feedbackSent = this.parentNode.parentNode.querySelector('.feedback-sent');
-                if (feedbackSent) {
-                    feedbackSent.style.display = 'inline-block';
+                if (!rating || rating < 1) {
+                    // Mostrar mensaje de error elegante
+                    const errorMsg = document.createElement('div');
+                    errorMsg.style.cssText = `
+                        color: #dc3545;
+                        font-size: 10px;
+                        margin-top: 3px;
+                        padding: 3px 6px;
+                        background: rgba(220, 53, 69, 0.08);
+                        border-radius: 3px;
+                        border: 1px solid rgba(220, 53, 69, 0.15);
+                    `;
+                    errorMsg.textContent = 'Por favor, selecciona una calificación con estrellas antes de enviar.';
                     
-                    // Desactivar estrellas y campo de comentario
-                    const stars = this.parentNode.parentNode.querySelectorAll('.star');
-                    stars.forEach(s => {
-                        s.style.pointerEvents = 'none';
-                    });
-                    
-                    commentInput.disabled = true;
-                    sendButton.disabled = true;
-                    commentContainer.style.opacity = '0.7';
+                    if (!this.parentNode.querySelector('.error-message')) {
+                        errorMsg.className = 'error-message';
+                        this.parentNode.appendChild(errorMsg);
+                        
+                        // Remover mensaje después de 3 segundos
+                        setTimeout(() => {
+                            if (errorMsg.parentNode) {
+                                errorMsg.parentNode.removeChild(errorMsg);
+                            }
+                        }, 3000);
+                    }
+                    return;
                 }
+                
+                // Animación de carga en el botón
+                const originalText = this.innerHTML;
+                this.innerHTML = '⏳ Enviando...';
+                this.disabled = true;
+                
+                // Enviar feedback con comentario
+                sendFeedback(rating, comentario).then(() => {
+                    // Mostrar mensaje de confirmación
+                    const feedbackSent = this.parentNode.parentNode.querySelector('.feedback-sent');
+                    if (feedbackSent) {
+                        feedbackSent.style.display = 'inline-block';
+                        
+                        // Desactivar estrellas y campo de comentario
+                        const stars = this.parentNode.parentNode.querySelectorAll('.star');
+                        stars.forEach(s => {
+                            s.style.pointerEvents = 'none';
+                            s.style.opacity = '0.7';
+                        });
+                        
+                        commentInput.disabled = true;
+                        commentInput.style.opacity = '0.7';
+                        charCounter.style.display = 'none';
+                        
+                        // Cambiar botón a estado de éxito
+                        this.innerHTML = '✅ Enviado';
+                        this.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+                        this.style.cursor = 'default';
+                        
+                        // Ocultar contenedor después de 2 segundos
+                        setTimeout(() => {
+                            commentContainer.style.opacity = '0.8';
+                            commentContainer.style.transform = 'scale(0.98)';
+                        }, 2000);
+                    }
+                }).catch((error) => {
+                    // Manejar error
+                    this.innerHTML = '❌ Error';
+                    this.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.style.background = '';
+                        this.disabled = false;
+                    }, 2000);
+                });
             });
             
             // Agregar elementos al contenedor de comentario
             commentContainer.appendChild(commentInput);
+            commentContainer.appendChild(charCounter);
             commentContainer.appendChild(sendButton);
             
             // Mensaje de confirmación (inicialmente oculto)
@@ -262,6 +614,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         chatMessages.appendChild(messageDiv);
+        
+        // Agregar animación de aparición suave
+        messageDiv.style.opacity = '0';
+        messageDiv.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            messageDiv.style.transition = 'all 0.3s ease-out';
+            messageDiv.style.opacity = '1';
+            messageDiv.style.transform = 'translateY(0)';
+        }, 10);
+        
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
         // Guardar en historial local si es necesario
@@ -292,11 +655,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!response.ok) {
                 console.error('Error al enviar feedback:', await response.json());
+                throw new Error('Error al enviar feedback');
             } else {
                 console.log('Feedback enviado correctamente');
+                return true;
             }
         } catch (error) {
             console.error('Error al enviar feedback:', error);
+            throw error;
         }
     }
 

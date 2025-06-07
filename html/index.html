@@ -5,30 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatBot IA UNAB</title>
     <link rel="stylesheet" href="index.css">
+    <!-- Cargar marked.js con configuración mejorada -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
     <style>
         /* Estilos para el sistema de feedback */
         .feedback-container {
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            margin-top: 5px;
-            font-size: 14px;
+            margin-top: 3px;
+            font-size: 12px;
             color: #777;
         }
 
         .feedback-question {
-            margin-right: 10px;
+            margin-right: 8px;
         }
 
         .star-rating {
             display: inline-flex;
-            gap: 5px;
+            gap: 3px;
         }
 
         .star {
             color: #ccc;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 14px;
             transition: color 0.2s;
         }
 
@@ -40,7 +42,8 @@
             color: #4CAF50;
             font-style: italic;
             display: none;
-            margin-left: 10px;
+            margin-left: 8px;
+            font-size: 11px;
         }
 
         /* Estilo para mensajes del bot con feedback */
@@ -49,7 +52,7 @@
         }
 
         .message.bot .message-content {
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
         
         /* Estilos para los botones de sugerencia */
@@ -77,12 +80,30 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Configuración inicial de marked -->
+    <script>
+        // Configurar marked globalmente al cargar la página
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                sanitize: false,
+                smartLists: true,
+                smartypants: true,
+                headerIds: false,
+                mangle: false,
+                pedantic: false,
+                silent: false
+            });
+        }
+    </script>
 </head>
 <body>
     <div class="chat-container">
         <div class="chat-header">
             <h1>UNAB-IA Mentor</h1>
-            <p>Asistente ChatBot Universidad Andres Bello v0.3 beta-testing</p>
+            <p>Asistente ChatBot Universidad Andres Bello v0.4.6 beta-testing</p>
             <div class="user-info">
                 <span id="user-name"></span>
                 <button id="logout-button">Cerrar sesión</button>
