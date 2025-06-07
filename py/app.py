@@ -1,32 +1,38 @@
-from fastapi import FastAPI, Request
+# ===== IMPORTS =====
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.llms import Ollama
+# Cambiar las importaciones deprecadas de Ollama
+from langchain_ollama import OllamaLLM, OllamaEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain.chains import LLMChain, RetrievalQA
 from langchain_community.callbacks.manager import get_openai_callback
 from langchain.memory import ConversationBufferMemory
-import os
-from fastapi import HTTPException
-from dotenv import load_dotenv
+from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import Chroma  # Nueva importación para ChromaDB
 from sqlalchemy import create_engine, Column, Integer, String, text, JSON, TIMESTAMP
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
-from datetime import datetime
-from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
 import logging
 import re
 from glob import glob
 from pymilvus import MilvusClient
-from langchain_community.embeddings import OllamaEmbeddings
-from langchain.chains import RetrievalQA
-from langchain_community.vectorstores import FAISS
+from datetime import datetime
+import hashlib
+import pickle
+import json
 
+# ===== CONFIGURACIÓN INICIAL =====
+# Cargar variables de entorno
+load_dotenv()
 
 # Configurar logging
 logging.basicConfig(
@@ -39,10 +45,8 @@ logger = logging.getLogger("chatbot_app")
 # Crear la aplicación FastAPI
 app = FastAPI()
 
-# Cargar variables de entorno
-load_dotenv()
-
-# --- Inicializar mysql ---
+# ===== CONFIGURACIÓN DE BASE DE DATOS =====
+# Configuración de MySQL
 DB_USER = "root"
 DB_PASSWORD = "rootchatbot"
 DB_HOST = "127.0.0.1"
@@ -58,7 +62,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Configurar bcrypt para el hash de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Definir el modelo de la tabla de usuarios
+# ===== MODELOS DE BASE DE DATOS =====
 Base = declarative_base()
 
 class User(Base):
@@ -89,8 +93,46 @@ class Feedback(Base):
 # Crear las tablas si no existen
 Base.metadata.create_all(bind=engine)
 
-# Función para verificar conexión a la base de datos
+# ===== FUNCIONES DE UTILIDAD =====
+
+# ===== FUNCIÓN PARA LIMPIAR RESPUESTAS DEL LLM =====
+def clean_llm_response(response_text):
+    """
+    Limpia la respuesta del LLM eliminando saltos de línea que cortan palabras.
+    """
+    if not response_text:
+        return response_text
+    
+    # Paso 1: Identificar y corregir palabras cortadas por saltos de línea
+    # Buscar patrones donde una palabra se corta con salto de línea
+    # Patrón: letra + salto de línea + letra (sin espacio)
+    corrected_text = re.sub(r'([a-zA-ZáéíóúñÁÉÍÓÚÑ])\n([a-zA-ZáéíóúñÁÉÍÓÚÑ])', r'\1\2', response_text)
+    
+    # Paso 2: Corregir casos específicos donde las palabras se cortan al final de línea
+    # Patrón más específico: palabra parcial + salto de línea + continuación
+    corrected_text = re.sub(r'([a-zA-ZáéíóúñÁÉÍÓÚÑ]{2,})\n([a-zA-ZáéíóúñÁÉÍÓÚÑ]{1,})', r'\1\2', corrected_text)
+    
+    # Paso 3: Normalizar espacios múltiples que puedan haber resultado
+    corrected_text = re.sub(r' {2,}', ' ', corrected_text)
+    
+    # Paso 4: Preservar saltos de línea intencionales (después de punto, dos puntos, etc.)
+    # Mantener saltos de línea después de signos de puntuación
+    corrected_text = re.sub(r'([.!?:;])\s*\n', r'\1\n\n', corrected_text)
+    
+    # Paso 5: Limpiar saltos de línea múltiples excesivos
+    corrected_text = re.sub(r'\n{3,}', '\n\n', corrected_text)
+    
+    # Paso 6: Eliminar espacios al final de las líneas
+    corrected_text = re.sub(r' +\n', '\n', corrected_text)
+    
+    # Paso 7: Eliminar espacios al inicio y final
+    corrected_text = corrected_text.strip()
+    
+    return corrected_text
+
+# ===== FUNCIÓN PARA VERIFICAR CONEXIÓN A LA BASE DE DATOS =====
 def check_db_connection():
+    """Función para verificar conexión a la base de datos"""
     try:
         with engine.connect() as connection:
             result = connection.execute(text('SELECT 1')).fetchone()
@@ -99,36 +141,227 @@ def check_db_connection():
         print("Error de conexión a la base de datos:", e)
         return False
 
-# --- Habilitar CORS para permitir peticiones desde el frontend ---
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Montar la carpeta actual como archivos estáticos
-app.mount("/static", StaticFiles(directory="."), name="static")
-
-# Ruta raíz para servir index.html
-@app.get("/")
-def serve_index():
-    return FileResponse("index.html")
-
-# --- Endpoint para verificar conexión ---
-@app.get("/check_connection")
-async def check_connection():
+# ===== FUNCIÓN PARA VERIFICAR CONEXIÓN A MILVUS =====
+def get_file_hash(file_path):
+    """Calcula el hash SHA-256 de un archivo para detectar cambios."""
+    hash_sha256 = hashlib.sha256()
     try:
-        # Verificar conexión con la base de datos
-        if check_db_connection():
-            return {"connected": True}
-        else:
-            return {"connected": False}
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_sha256.update(chunk)
+        return hash_sha256.hexdigest()
     except Exception as e:
-        return {"connected": False, "error": str(e)}
+        logger.error(f"Error calculando hash de {file_path}: {e}")
+        return None
 
-# --- Funciones para el procesamiento del lenguaje natural ---
+def get_file_metadata(file_path):
+    """Obtiene metadatos del archivo (hash, tamaño, fecha de modificación)."""
+    try:
+        stat = os.stat(file_path)
+        return {
+            "path": file_path,
+            "hash": get_file_hash(file_path),
+            "size": stat.st_size,
+            "mtime": stat.st_mtime,
+            "name": os.path.basename(file_path)
+        }
+    except Exception as e:
+        logger.error(f"Error obteniendo metadatos de {file_path}: {e}")
+        return None
+
+def save_cache_metadata(cache_dir, pdf_metadata, fragments_count):
+    """Guarda metadatos del cache para verificación posterior."""
+    metadata_file = os.path.join(cache_dir, "cache_metadata.json")
+    metadata = {
+        "created_at": datetime.now().isoformat(),
+        "pdf_files": pdf_metadata,
+        "total_fragments": fragments_count,
+        "cache_version": "1.0"
+    }
+    
+    try:
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        logger.error(f"Error guardando metadatos del cache: {e}")
+        return False
+
+def load_cache_metadata(cache_dir):
+    """Carga metadatos del cache si existen."""
+    metadata_file = os.path.join(cache_dir, "cache_metadata.json")
+    
+    if not os.path.exists(metadata_file):
+        return None
+    
+    try:
+        with open(metadata_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error cargando metadatos del cache: {e}")
+        return None
+
+def save_fragments_cache(cache_dir, fragments):
+    """Guarda los fragmentos procesados en cache."""
+    fragments_file = os.path.join(cache_dir, "fragments.pkl")
+    
+    try:
+        with open(fragments_file, 'wb') as f:
+            pickle.dump(fragments, f)
+        return True
+    except Exception as e:
+        logger.error(f"Error guardando fragmentos en cache: {e}")
+        return False
+
+def load_fragments_cache(cache_dir):
+    """Carga los fragmentos desde cache."""
+    fragments_file = os.path.join(cache_dir, "fragments.pkl")
+    
+    if not os.path.exists(fragments_file):
+        return None
+    
+    try:
+        with open(fragments_file, 'rb') as f:
+            return pickle.load(f)
+    except Exception as e:
+        logger.error(f"Error cargando fragmentos desde cache: {e}")
+        return None
+
+def check_cache_validity(cache_metadata, current_pdf_files):
+    """Verifica si el cache sigue siendo válido comparando archivos PDF."""
+    if not cache_metadata:
+        logger.info("No hay metadatos de cache previos")
+        return False, []
+    
+    cached_files = {f["path"]: f for f in cache_metadata.get("pdf_files", [])}
+    current_files = {f["path"]: f for f in current_pdf_files}
+    
+    # Verificar archivos eliminados
+    removed_files = set(cached_files.keys()) - set(current_files.keys())
+    if removed_files:
+        logger.info(f"Archivos eliminados detectados: {removed_files}")
+        return False, []
+    
+    # Verificar archivos nuevos o modificados
+    new_or_modified = []
+    for path, current_meta in current_files.items():
+        if path not in cached_files:
+            logger.info(f"Archivo nuevo detectado: {path}")
+            new_or_modified.append(current_meta)
+        elif cached_files[path]["hash"] != current_meta["hash"]:
+            logger.info(f"Archivo modificado detectado: {path}")
+            new_or_modified.append(current_meta)
+        elif cached_files[path]["mtime"] != current_meta["mtime"]:
+            logger.info(f"Fecha de modificación cambiada: {path}")
+            new_or_modified.append(current_meta)
+    
+    # Cache válido si no hay archivos nuevos o modificados
+    cache_valid = len(new_or_modified) == 0
+    
+    logger.info(f"Cache {'válido' if cache_valid else 'inválido'}. Archivos a procesar: {len(new_or_modified)}")
+    return cache_valid, new_or_modified
+
+def process_pdf_files_optimized(pdfs_dir, cache_dir):
+    """Procesa archivos PDF de manera optimizada usando cache."""
+    logger.info("🚀 Iniciando procesamiento optimizado de archivos PDF...")
+    
+    # Crear directorio de cache si no existe
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    # Obtener lista de archivos PDF actuales
+    pdf_files = glob(os.path.join(pdfs_dir, "*.pdf"))
+    if not pdf_files:
+        logger.warning("No se encontraron archivos PDF")
+        return [], []
+    
+    logger.info(f"📁 Encontrados {len(pdf_files)} archivos PDF")
+    
+    # Obtener metadatos de archivos actuales
+    current_pdf_metadata = []
+    for pdf_path in pdf_files:
+        metadata = get_file_metadata(pdf_path)
+        if metadata:
+            current_pdf_metadata.append(metadata)
+    
+    # Cargar metadatos del cache previo
+    cache_metadata = load_cache_metadata(cache_dir)
+    
+    # Verificar validez del cache
+    cache_valid, files_to_process = check_cache_validity(cache_metadata, current_pdf_metadata)
+    
+    if cache_valid:
+        logger.info("✅ Cache válido, cargando fragmentos desde cache...")
+        cached_fragments = load_fragments_cache(cache_dir)
+        if cached_fragments:
+            logger.info(f"📄 Cargados {len(cached_fragments)} fragmentos desde cache")
+            return [], cached_fragments  # Retornar documentos vacíos y fragmentos cacheados
+        else:
+            logger.warning("⚠️ Metadatos válidos pero no se pudieron cargar fragmentos, reprocesando...")
+            files_to_process = current_pdf_metadata
+    
+    # Procesar archivos (todos si cache inválido, o solo nuevos/modificados)
+    if not files_to_process:
+        files_to_process = current_pdf_metadata
+    
+    logger.info(f"🔄 Procesando {len(files_to_process)} archivos...")
+    
+    # Cargar fragmentos existentes si es procesamiento incremental
+    existing_fragments = []
+    if cache_valid and cache_metadata:
+        existing_fragments = load_fragments_cache(cache_dir) or []
+        logger.info(f"📄 Manteniendo {len(existing_fragments)} fragmentos existentes")
+    
+    # Procesar archivos nuevos/modificados
+    new_documents = []
+    processed_files = set()
+    
+    for file_metadata in files_to_process:
+        file_path = file_metadata["path"]
+        
+        # Evitar procesar el mismo archivo dos veces
+        if file_path in processed_files:
+            continue
+        
+        try:
+            logger.info(f"📖 Procesando: {file_metadata['name']} ({file_metadata['size']/1024/1024:.1f} MB)")
+            
+            loader = PyPDFLoader(file_path)
+            docs = loader.load()
+            new_documents.extend(docs)
+            processed_files.add(file_path)
+            
+            logger.info(f"✅ Procesado: {file_metadata['name']} - {len(docs)} páginas")
+            
+        except Exception as e:
+            logger.error(f"❌ Error procesando {file_path}: {e}")
+            continue
+    
+    # Dividir documentos en fragmentos si hay documentos nuevos
+    all_fragments = existing_fragments.copy()
+    
+    if new_documents:
+        logger.info(f"🔧 Dividiendo {len(new_documents)} documentos en fragmentos...")
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        new_fragments = splitter.split_documents(new_documents)
+        all_fragments.extend(new_fragments)
+        logger.info(f"📄 Creados {len(new_fragments)} nuevos fragmentos (Total: {len(all_fragments)})")
+    
+    # Guardar cache actualizado
+    if all_fragments:
+        logger.info("💾 Guardando cache actualizado...")
+        
+        # Guardar fragmentos
+        if save_fragments_cache(cache_dir, all_fragments):
+            logger.info("✅ Fragmentos guardados en cache")
+        
+        # Guardar metadatos
+        if save_cache_metadata(cache_dir, current_pdf_metadata, len(all_fragments)):
+            logger.info("✅ Metadatos guardados en cache")
+    
+    logger.info(f"🎉 Procesamiento completado: {len(all_fragments)} fragmentos totales")
+    return new_documents, all_fragments
+
+
 def analyze_question_complexity(question):
     """Analiza la complejidad de la pregunta para determinar el tipo de respuesta necesaria."""
     # Preguntas específicas que requieren respuestas detalladas
@@ -389,120 +622,36 @@ def extract_keywords(text):
     # Limitar a un máximo de 10 palabras clave más relevantes
     return unique_keywords[:10] if len(unique_keywords) > 10 else unique_keywords
 
-# --- Cargar TODOS los PDF de la carpeta y preparar el modelo ---
-# Inicializar variables globales para evitar errores de referencia
-fragmentos = []
-documentos = []
-using_vector_db = False
-cadena = None
-llm = None
-memory = None
+# ===== CONFIGURACIÓN DE MIDDLEWARES =====
+# Habilitar CORS para permitir peticiones desde el frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-try:
-    # Cargar PDFs
-    pdfs_dir = os.path.join(os.path.dirname(__file__), "pdfs")
-    pdf_files = glob(os.path.join(pdfs_dir, "*.pdf"))
-    logger.info(f"Encontrados {len(pdf_files)} archivos PDF")
-    
-    if not pdf_files:
-        logger.warning("No se encontraron archivos PDF en la carpeta pdfs")
-        raise Exception("No hay archivos PDF disponibles")
-    
-    documentos = []
-    for pdf_path in pdf_files:
-        try:
-            loader = PyPDFLoader(pdf_path)
-            documentos.extend(loader.load())
-            logger.info(f"Cargado PDF: {pdf_path}")
-        except Exception as pdf_error:
-            logger.error(f"Error al cargar {pdf_path}: {pdf_error}")
-    
-    if not documentos:
-        logger.warning("No se pudieron cargar documentos de los PDFs")
-        raise Exception("No se pudieron extraer documentos de los PDFs")
-    
-    # Dividir documentos en fragmentos
-    splitter = RecursiveCharacterTextSplitter(chunk_size=3000, chunk_overlap=150)
-    fragmentos = splitter.split_documents(documentos)
-    logger.info(f"Documentos divididos en {len(fragmentos)} fragmentos")
-    
-    # Inicializar embeddings
-    embeddings = OllamaEmbeddings(model="llama3")
-    
-    # Configurar FAISS
-    faiss_path = os.path.join(os.path.dirname(__file__), "faiss_index")
-    os.makedirs(faiss_path, exist_ok=True)  # Asegurar que el directorio existe
-    
-    # Crear la base de datos vectorial con FAISS
-    logger.info(f"Inicializando FAISS en {faiss_path}")
-    vector_store = FAISS.from_documents(documents=fragmentos, embedding=embeddings)
-    
-    # Guardar el índice en disco
-    vector_store.save_local(faiss_path)
-    logger.info(f"Índice FAISS guardado en {faiss_path}")
-    
-    # Inicializar el modelo LLM
-    llm = Ollama(model="llama3", temperature=0.3)
-    
-    # Crear cadena de recuperación
-    retriever = vector_store.as_retriever(search_kwargs={"k": 3})
-    cadena = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=retriever,
-        return_source_documents=True
-    )
-    
-    # Crear memoria para conversación
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    
-    # Marcar que estamos usando base de datos vectorial
-    using_vector_db = True
-    logger.info("FAISS inicializado correctamente")
+# Montar la carpeta actual como archivos estáticos
+app.mount("/static", StaticFiles(directory="."), name="static")
 
-except Exception as e:
-    logger.error(f"Error al configurar FAISS: {e}")
-    logger.info("Iniciando fallback a procesamiento en memoria...")
-    
-    # Asegurar que las variables estén inicializadas
-    if not 'fragmentos' in locals() or not fragmentos:
-        fragmentos = []
-    if not 'documentos' in locals() or not documentos:
-        documentos = []
-    
-    # Intentar cargar PDFs nuevamente si no se cargaron antes
-    if not documentos:
-        try:
-            pdfs_dir = os.path.join(os.path.dirname(__file__), "pdfs")
-            pdf_files = glob(os.path.join(pdfs_dir, "*.pdf"))
-            
-            for pdf_path in pdf_files:
-                try:
-                    loader = PyPDFLoader(pdf_path)
-                    documentos.extend(loader.load())
-                except Exception as pdf_error:
-                    logger.error(f"Fallback: Error al cargar {pdf_path}: {pdf_error}")
-            
-            # Dividir documentos si hay alguno
-            if documentos:
-                splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=300)
-                fragmentos = splitter.split_documents(documentos)
-                logger.info(f"Fallback: Documentos divididos en {len(fragmentos)} fragmentos")
-        except Exception as fallback_error:
-            logger.error(f"Error en fallback de carga de PDFs: {fallback_error}")
-    
-    # Configurar LLM y cadena de QA básica
+# Ruta raíz para servir index.html
+@app.get("/")
+def serve_index():
+    return FileResponse("index.html")
+
+# --- Endpoint para verificar conexión ---
+@app.get("/check_connection")
+async def check_connection():
     try:
-        llm = Ollama(model="llama3", temperature=0.3)
-        # Usar load_qa_chain como fallback (ignorar advertencia de deprecación)
-        cadena = load_qa_chain(llm, chain_type="stuff")
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        using_vector_db = False  # Marcar que NO estamos usando base de datos vectorial
-        logger.info("Fallback configurado correctamente")
-    except Exception as llm_error:
-        logger.error(f"Error crítico al configurar fallback: {llm_error}")
-        cadena = None
-        memory = None
+        # Verificar conexión con la base de datos
+        if check_db_connection():
+            return {"connected": True}
+        else:
+            return {"connected": False}
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
 # --- Contexto y plantillas de prompt ---
 # Contexto base que se usará en todas las interacciones
 contexto_base = (
@@ -540,19 +689,46 @@ contexto_base = (
 # Esta plantilla guía al LLM sobre cómo usar el contexto_base, los documentos recuperados,
 # el historial de chat y la pregunta del usuario.
 plantilla_qa_con_documentos_str = (
-    contexto_base + "\n\n"  # Tu contexto general del bot
-    "Instrucciones Adicionales: Eres un asistente especializado. "
-    "Utiliza la siguiente información recuperada de documentos relevantes y el historial de conversación para responder la pregunta del usuario de manera precisa y útil. "
-    "Si la información necesaria no se encuentra en los documentos recuperados, indícalo claramente. "
-    "Adapta tu respuesta al nivel universitario, siendo claro y didáctico.\n\n"
-    "Información recuperada de documentos (Contexto FAISS):\n{context}\n\n"
-    "Historial de conversación previa:\n{chat_history}\n\n"
-    "Pregunta del usuario: {question}\n\n"
-    "Respuesta detallada y útil en español:"
+    "Contexto del sistema: Eres un asistente educativo especializado en Fundamentos de Inteligencia Artificial. "
+    "Tu función es ayudar a estudiantes universitarios respondiendo sus preguntas de manera clara, didáctica y precisa.\n\n"
+    "Instrucciones de respuesta:\n"
+    "- Usa la información de los documentos recuperados para dar respuestas precisas\n"
+    "- Si la información no está en los documentos, indícalo claramente\n"
+    "- Adapta tu lenguaje al nivel universitario\n"
+    "- Proporciona ejemplos cuando sea relevante\n"
+    "- Mantén un tono profesional pero amigable\n"
+    "- Considera el historial de conversación para dar continuidad\n\n"
+    "Información de documentos relevantes:\n{context}\n\n"
+    "Historial de conversación:\n{chat_history}\n\n"
+    "Pregunta del estudiante: {question}\n\n"
+    "Respuesta educativa en español:"
 )
+
 PROMPT_QA_FAISS = PromptTemplate(
     template=plantilla_qa_con_documentos_str,
-    input_variables=["context", "chat_history", "question"] # 'context' es donde RetrievalQA pone los docs
+    input_variables=["context", "chat_history", "question"]
+)
+
+# Plantilla simplificada para RetrievalQA que solo use context y question (MEJORADA)
+plantilla_qa_simple_str = (
+    "Contexto del sistema: Eres un asistente educativo especializado en Fundamentos de Inteligencia Artificial. "
+    "Tu función es ayudar a estudiantes universitarios respondiendo sus preguntas de manera clara, didáctica y precisa.\n\n"
+    "Instrucciones de respuesta:\n"
+    "- Usa la información de los documentos recuperados para dar respuestas precisas y completas\n"
+    "- Organiza tu respuesta en párrafos separados cuando abordes diferentes aspectos\n"
+    "- Si hay múltiples puntos importantes, enuméralos claramente\n"
+    "- Incluye ejemplos específicos cuando sea relevante\n"
+    "- Adapta tu lenguaje al nivel universitario pero mantén claridad\n"
+    "- Proporciona una respuesta completa que cubra todos los aspectos de la pregunta\n"
+    "- Si la información no está en los documentos, indícalo claramente\n\n"
+    "Información de documentos relevantes:\n{context}\n\n"
+    "Pregunta del estudiante: {question}\n\n"
+    "Respuesta educativa completa y bien estructurada en español:"
+)
+
+PROMPT_QA_SIMPLE = PromptTemplate(
+    template=plantilla_qa_simple_str,
+    input_variables=["context", "question"]  # Solo context y question, sin chat_history
 )
 
 # Plantilla base para load_qa_chain (Fallback, si FAISS falla)
@@ -572,15 +748,7 @@ PROMPT_FALLBACK = PromptTemplate(
     input_variables=["context", "chat_history", "question"]
 )
 
-
-
-
-
-
-
-
-
-
+# Plantillas especializadas MEJORADAS con mejor estructura
 plantilla_especifica = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
@@ -596,33 +764,38 @@ plantilla_especifica = PromptTemplate(
     )
 )
 
-# Plantilla para respuestas detalladas
 plantilla_detallada = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
         "{contexto}\n\n"
-        "Instrucciones específicas: Proporciona una explicación completa y detallada. Organiza tu respuesta en párrafos estructurados. "
-        "Incluye ejemplos si son relevantes. Asegúrate de cubrir todos los aspectos importantes relacionados con la pregunta.\n\n"
+        "Instrucciones específicas: Proporciona una explicación completa y detallada. "
+        "Organiza tu respuesta en párrafos claros y bien separados. "
+        "Estructura tu respuesta de la siguiente manera:\n"
+        "1. Definición o concepto principal\n"
+        "2. Explicación detallada del funcionamiento o características\n"
+        "3. Ejemplos concretos y aplicaciones prácticas\n"
+        "4. Relación con otros conceptos de IA cuando sea relevante\n"
+        "Usa saltos de línea entre párrafos para mejor legibilidad.\n\n"
         "Conversación previa:\n{conversacion}\n\n"
         "Pregunta: {pregunta}\n\n"
-        "Respuesta detallada:"
+        "Respuesta detallada y bien estructurada:"
     )
 )
 
-# Plantilla para respuestas concisas
 plantilla_concisa = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
         "{contexto}\n\n"
-        "Instrucciones específicas: Proporciona una respuesta corta, directa y precisa. Usa máximo 2-3 oraciones. "
-        "Ve directo al punto sin rodeos ni información adicional. Sé claro y específico.\n\n"
+        "Instrucciones específicas: Proporciona una respuesta clara y directa, pero completa. "
+        "Usa entre 3-5 oraciones para dar una respuesta completa sin ser excesivamente larga. "
+        "Incluye la información esencial y asegúrate de que la respuesta termine de manera natural. "
+        "Si hay puntos importantes, puedes usar viñetas para organizarlos mejor.\n\n"
         "Conversación previa:\n{conversacion}\n\n"
         "Pregunta: {pregunta}\n\n"
         "Respuesta concisa:"
     )
 )
 
-# Plantilla para respuestas mixtas (equilibrio entre concisión y detalle)
 plantilla_mixta = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
@@ -635,7 +808,6 @@ plantilla_mixta = PromptTemplate(
     )
 )
 
-# Plantilla para respuestas de seguimiento (aclaraciones o ejemplos adicionales)
 plantilla_seguimiento = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
@@ -649,8 +821,6 @@ plantilla_seguimiento = PromptTemplate(
     )
 )
 
-
-# Plantilla para aclaraciones
 plantilla_aclaracion = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
@@ -663,20 +833,22 @@ plantilla_aclaracion = PromptTemplate(
     )
 )
 
-# Plantilla para ejemplos
 plantilla_ejemplo = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
         "{contexto}\n\n"
-        "Instrucciones específicas: El usuario ha solicitado ejemplos concretos relacionados con la pregunta. "
-        "Proporciona uno o más ejemplos claros y relevantes.\n\n"
+        "Instrucciones específicas: Proporciona ejemplos concretos y detallados relacionados con la pregunta. "
+        "Para cada ejemplo:\n\n"
+        "• Describe el ejemplo claramente\n"
+        "• Explica cómo se relaciona con el concepto\n"
+        "• Menciona su aplicación práctica\n\n"
+        "Separa cada ejemplo con párrafos distintos para mayor claridad.\n\n"
         "Conversación previa:\n{conversacion}\n\n"
         "Pregunta de ejemplo: {pregunta}\n\n"
-        "Ejemplo(s):"
+        "Ejemplos detallados y bien explicados:"
     )
 )
 
-# Plantilla para resumen
 plantilla_resumen = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
@@ -689,20 +861,402 @@ plantilla_resumen = PromptTemplate(
     )
 )
 
-# Plantilla para comparación
 plantilla_comparacion = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
         "{contexto}\n\n"
-        "Instrucciones específicas: El usuario ha solicitado una comparación entre conceptos. "
-        "Presenta las similitudes y diferencias de manera clara y estructurada.\n\n"
+        "Instrucciones específicas: Realiza una comparación detallada entre los conceptos solicitados. "
+        "Estructura tu respuesta de la siguiente manera:\n\n"
+        "**Similitudes:**\n"
+        "• [Lista las características comunes]\n\n"
+        "**Diferencias principales:**\n"
+        "• [Contrasta las diferencias clave]\n\n"
+        "**Aplicaciones específicas:**\n"
+        "• [Menciona dónde se usa cada uno]\n\n"
+        "**Conclusión:**\n"
+        "• [Resume cuándo usar cada uno]\n\n"
         "Conversación previa:\n{conversacion}\n\n"
         "Pregunta de comparación: {pregunta}\n\n"
-        "Comparación:"
+        "Comparación detallada y estructurada:"
     )
 )
 
-# Plantilla para definición
+plantilla_reescritura_pregunta = PromptTemplate(
+    input_variables=["historial_chat", "pregunta"],
+    template="""
+    Reformula la siguiente pregunta de usuario, considerando el historial de chat, en una única y concisa consulta de búsqueda para una base de datos vectorial.
+    La consulta debe estar en español y contener solo las palabras clave esenciales para la búsqueda.
+
+    REGLAS ESTRICTAS:
+    - NO añadas explicaciones, introducciones, ni texto adicional.
+    - NO uses comillas ni asteriscos en la salida.
+    - El resultado debe ser una sola línea de texto.
+
+    HISTORIAL DEL CHAT:
+    {historial_chat}
+    ---
+    PREGUNTA DEL USUARIO: "{pregunta}"
+    ---
+    CONSULTA DE BÚSQUEDA REFORMULADA:
+    """
+)
+
+
+# ===== CONFIGURACIÓN DEL SISTEMA DE IA =====
+# Inicializar variables globales para evitar errores de referencia
+fragmentos = []
+documentos = []
+using_vector_db = False
+using_chroma = False  # Nueva variable para controlar el uso de ChromaDB
+cadena = None
+llm = None
+memory = None
+vector_store = None  # Variable para almacenar el vector store activo
+
+try:
+    # Cargar PDFs
+    pdfs_dir = os.path.join(os.path.dirname(__file__), "pdfs")
+    pdf_files = glob(os.path.join(pdfs_dir, "*.pdf"))
+    logger.info(f"Encontrados {len(pdf_files)} archivos PDF")
+    
+    if not pdf_files:
+        logger.warning("No se encontraron archivos PDF en la carpeta pdfs")
+        raise Exception("No hay archivos PDF disponibles")
+    
+    documentos = []
+    for pdf_path in pdf_files:
+        try:
+            loader = PyPDFLoader(pdf_path)
+            documentos.extend(loader.load())
+            logger.info(f"Cargado PDF: {pdf_path}")
+        except Exception as pdf_error:
+            logger.error(f"Error al cargar {pdf_path}: {pdf_error}")
+    
+    if not documentos:
+        logger.warning("No se pudieron cargar documentos de los PDFs")
+        raise Exception("No se pudieron extraer documentos de los PDFs")
+    
+    # Dividir documentos en fragmentos
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    fragmentos = splitter.split_documents(documentos)
+    logger.info(f"Documentos divididos en {len(fragmentos)} fragmentos")
+    
+    # Inicializar embeddings
+    embeddings = OllamaEmbeddings(model="llama3")
+    
+    # Intentar configurar ChromaDB primero
+    try:
+        chroma_path = os.path.join(os.path.dirname(__file__), "chroma_db")
+        os.makedirs(chroma_path, exist_ok=True)
+        
+        logger.info(f"Inicializando ChromaDB en {chroma_path}")
+        
+        # Crear la base de datos vectorial con ChromaDB
+        vector_store = Chroma.from_documents(
+            documents=fragmentos,
+            embedding=embeddings,
+            persist_directory=chroma_path
+        )
+        
+        # Persistir los datos
+        vector_store.persist()
+        logger.info(f"ChromaDB guardado en {chroma_path}")
+        
+        using_chroma = True
+        using_vector_db = True
+        logger.info("ChromaDB inicializado correctamente")
+        
+    except Exception as chroma_error:
+        logger.error(f"Error al configurar ChromaDB: {chroma_error}")
+        logger.info("Intentando fallback a FAISS...")
+        
+        # Fallback a FAISS si ChromaDB falla
+        try:
+            faiss_path = os.path.join(os.path.dirname(__file__), "faiss_index")
+            os.makedirs(faiss_path, exist_ok=True)
+            
+            logger.info(f"Inicializando FAISS en {faiss_path}")
+            vector_store = FAISS.from_documents(documents=fragmentos, embedding=embeddings)
+            
+            # Guardar el índice en disco
+            vector_store.save_local(faiss_path)
+            logger.info(f"Índice FAISS guardado en {faiss_path}")
+            
+            using_chroma = False
+            using_vector_db = True
+            logger.info("FAISS inicializado correctamente como fallback")
+            
+        except Exception as faiss_error:
+            logger.error(f"Error al configurar FAISS: {faiss_error}")
+            vector_store = None
+            using_chroma = False
+            using_vector_db = False
+    
+    # Inicializar el modelo LLM
+    llm = OllamaLLM(model="llama3", temperature=0.3)
+    
+    # Crear cadena de recuperación si tenemos un vector store
+    if vector_store is not None:
+        retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+        
+        # Usar la plantilla simple sin chat_history para evitar errores
+        cadena = RetrievalQA.from_chain_type(
+            llm=llm,
+            chain_type="stuff",
+            retriever=retriever,
+            return_source_documents=True,
+            chain_type_kwargs={"prompt": PROMPT_QA_SIMPLE}  # Usar plantilla simple
+        )
+        
+        logger.info(f"RetrievalQA configurado con {'ChromaDB' if using_chroma else 'FAISS'}")
+    else:
+        logger.warning("No se pudo configurar ningún vector store")
+    
+    # Crear memoria para conversación
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    
+    logger.info(f"Sistema de IA configurado: ChromaDB={using_chroma}, VectorDB={using_vector_db}")
+
+except Exception as e:
+    logger.error(f"Error crítico al configurar el sistema de IA: {e}")
+    logger.info("Iniciando fallback completo a procesamiento en memoria...")
+    
+    # Asegurar que las variables estén inicializadas
+    if not 'fragmentos' in locals() or not fragmentos:
+        fragmentos = []
+    if not 'documentos' in locals() or not documentos:
+        documentos = []
+    
+    # Intentar cargar PDFs nuevamente si no se cargaron antes
+    if not documentos:
+        try:
+            pdfs_dir = os.path.join(os.path.dirname(__file__), "pdfs")
+            pdf_files = glob(os.path.join(pdfs_dir, "*.pdf"))
+            
+            for pdf_path in pdf_files:
+                try:
+                    loader = PyPDFLoader(pdf_path)
+                    documentos.extend(loader.load())
+                except Exception as pdf_error:
+                    logger.error(f"Fallback: Error al cargar {pdf_path}: {pdf_error}")
+            
+            # Dividir documentos si hay alguno
+            if documentos:
+                splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=300)
+                fragmentos = splitter.split_documents(documentos)
+                logger.info(f"Fallback: Documentos divididos en {len(fragmentos)} fragmentos")
+        except Exception as fallback_error:
+            logger.error(f"Error en fallback de carga de PDFs: {fallback_error}")
+    
+    # Configurar LLM y cadena de QA básica
+    try:
+        llm = OllamaLLM(model="llama3", temperature=0.3)
+        # Usar load_qa_chain como fallback (ignorar advertencia de deprecación)
+        cadena = load_qa_chain(llm, chain_type="stuff")
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        using_vector_db = False  # Marcar que NO estamos usando base de datos vectorial
+        logger.info("Fallback configurado correctamente")
+    except Exception as llm_error:
+        logger.error(f"Error crítico al configurar fallback: {llm_error}")
+        cadena = None
+        memory = None
+
+# ===== END CONFIGURACIÓN DEL SISTEMA DE IA =====
+
+# ===== PLANTILLAS DE PROMPTS =====
+# Plantilla mejorada para RetrievalQA con ChromaDB/FAISS
+plantilla_qa_con_documentos_str = (
+    "Contexto del sistema: Eres un asistente educativo especializado en Fundamentos de Inteligencia Artificial. "
+    "Tu función es ayudar a estudiantes universitarios respondiendo sus preguntas de manera clara, didáctica y precisa.\n\n"
+    "Instrucciones de respuesta:\n"
+    "- Usa la información de los documentos recuperados para dar respuestas precisas\n"
+    "- Si la información no está en los documentos, indícalo claramente\n"
+    "- Adapta tu lenguaje al nivel universitario\n"
+    "- Proporciona ejemplos cuando sea relevante\n"
+    "- Mantén un tono profesional pero amigable\n"
+    "- Considera el historial de conversación para dar continuidad\n\n"
+    "Información de documentos relevantes:\n{context}\n\n"
+    "Historial de conversación:\n{chat_history}\n\n"
+    "Pregunta del estudiante: {question}\n\n"
+    "Respuesta educativa en español:"
+)
+
+PROMPT_QA_FAISS = PromptTemplate(
+    template=plantilla_qa_con_documentos_str,
+    input_variables=["context", "chat_history", "question"]
+)
+
+# Plantilla simplificada para RetrievalQA que solo use context y question (MEJORADA)
+plantilla_qa_simple_str = (
+    "Contexto del sistema: Eres un asistente educativo especializado en Fundamentos de Inteligencia Artificial. "
+    "Tu función es ayudar a estudiantes universitarios respondiendo sus preguntas de manera clara, didáctica y precisa.\n\n"
+    "Instrucciones de respuesta:\n"
+    "- Usa la información de los documentos recuperados para dar respuestas precisas y completas\n"
+    "- Organiza tu respuesta en párrafos separados cuando abordes diferentes aspectos\n"
+    "- Si hay múltiples puntos importantes, enuméralos claramente\n"
+    "- Incluye ejemplos específicos cuando sea relevante\n"
+    "- Adapta tu lenguaje al nivel universitario pero mantén claridad\n"
+    "- Proporciona una respuesta completa que cubra todos los aspectos de la pregunta\n"
+    "- Si la información no está en los documentos, indícalo claramente\n\n"
+    "Información de documentos relevantes:\n{context}\n\n"
+    "Pregunta del estudiante: {question}\n\n"
+    "Respuesta educativa completa y bien estructurada en español:"
+)
+
+PROMPT_QA_SIMPLE = PromptTemplate(
+    template=plantilla_qa_simple_str,
+    input_variables=["context", "question"]  # Solo context y question, sin chat_history
+)
+
+# Plantilla base para load_qa_chain (Fallback, si FAISS falla)
+# Similar a la anterior, pero para el caso de fallback.
+plantilla_fallback_str = (
+    contexto_base + "\n\n"
+    "Instrucciones Adicionales: Eres un asistente especializado (operando en modo fallback). "
+    "Utiliza la siguiente información de documentos (si se proporcionan) y el historial de conversación para responder la pregunta del usuario. "
+    "Si la información es limitada, haz tu mejor esfuerzo para ser útil o indica que no tienes suficiente información específica de los documentos.\n\n"
+    "Información de documentos (Contexto directo de fragmentos):\n{context}\n\n" # 'context' es donde load_qa_chain pone los docs
+    "Historial de conversación previa:\n{chat_history}\n\n"
+    "Pregunta del usuario: {question}\n\n"
+    "Respuesta útil en español:"
+)
+PROMPT_FALLBACK = PromptTemplate(
+    template=plantilla_fallback_str,
+    input_variables=["context", "chat_history", "question"]
+)
+
+# Plantillas especializadas MEJORADAS con mejor estructura
+plantilla_especifica = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: Busca información EXACTA en el syllabus o documentos proporcionados. "
+        "SOLO responde con información que esté explícitamente en los documentos. "
+        "Si la información específica no está en los documentos, indícalo claramente. "
+        "Cita textualmente la parte relevante del documento y especifica la sección o página. "
+        "NO elabores ni añadas información que no esté en los documentos.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta específica: {pregunta}\n\n"
+        "Respuesta basada ÚNICAMENTE en documentos:"
+    )
+)
+
+plantilla_detallada = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: Proporciona una explicación completa y detallada. "
+        "Organiza tu respuesta en párrafos claros y bien separados. "
+        "Estructura tu respuesta de la siguiente manera:\n"
+        "1. Definición o concepto principal\n"
+        "2. Explicación detallada del funcionamiento o características\n"
+        "3. Ejemplos concretos y aplicaciones prácticas\n"
+        "4. Relación con otros conceptos de IA cuando sea relevante\n"
+        "Usa saltos de línea entre párrafos para mejor legibilidad.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta: {pregunta}\n\n"
+        "Respuesta detallada y bien estructurada:"
+    )
+)
+
+plantilla_concisa = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: Proporciona una respuesta corta, directa y precisa. Usa máximo 2-3 oraciones. "
+        "Ve directo al punto sin rodeos ni información adicional. Sé claro y específico.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta: {pregunta}\n\n"
+        "Respuesta concisa:"
+    )
+)
+
+plantilla_mixta = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: Proporciona una respuesta equilibrada. Comienza con la información esencial "
+        "de forma directa y añade solo los detalles relevantes. Organiza la información de manera clara y concisa.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta: {pregunta}\n\n"
+        "Respuesta:"
+    )
+)
+
+plantilla_seguimiento = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: El usuario ha solicitado una aclaración, ejemplo adicional o desea profundizar en la respuesta anterior. "
+        "Responde ampliando la información, proporcionando ejemplos concretos, analogías o explicaciones adicionales según corresponda. "
+        "Mantén un tono didáctico y asegúrate de que la explicación sea fácil de entender.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta de seguimiento: {pregunta}\n\n"
+        "Respuesta de seguimiento:"
+    )
+)
+
+plantilla_aclaracion = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: El usuario ha solicitado que expliques la respuesta anterior de otra manera o con mayor claridad. "
+        "Reformula la explicación usando diferentes palabras, analogías o simplificaciones.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta de aclaración: {pregunta}\n\n"
+        "Respuesta aclaratoria:"
+    )
+)
+
+plantilla_ejemplo = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: Proporciona ejemplos concretos y detallados relacionados con la pregunta. "
+        "Para cada ejemplo:\n\n"
+        "• Describe el ejemplo claramente\n"
+        "• Explica cómo se relaciona con el concepto\n"
+        "• Menciona su aplicación práctica\n\n"
+        "Separa cada ejemplo con párrafos distintos para mayor claridad.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta de ejemplo: {pregunta}\n\n"
+        "Ejemplos detallados y bien explicados:"
+    )
+)
+
+plantilla_resumen = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: El usuario ha solicitado un resumen. "
+        "Resume la información clave de manera breve y clara.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta de resumen: {pregunta}\n\n"
+        "Resumen:"
+    )
+)
+
+plantilla_comparacion = PromptTemplate(
+    input_variables=["contexto", "conversacion", "pregunta"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: Realiza una comparación detallada entre los conceptos solicitados. "
+        "Estructura tu respuesta de la siguiente manera:\n\n"
+        "**Similitudes:**\n"
+        "• [Lista las características comunes]\n\n"
+        "**Diferencias principales:**\n"
+        "• [Contrasta las diferencias clave]\n\n"
+        "**Aplicaciones específicas:**\n"
+        "• [Menciona dónde se usa cada uno]\n\n"
+        "**Conclusión:**\n"
+        "• [Resume cuándo usar cada uno]\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Pregunta de comparación: {pregunta}\n\n"
+        "Comparación detallada y estructurada:"
+    )
+)
+
+# Añadir las plantillas faltantes después de las existentes
 plantilla_definicion = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
@@ -715,7 +1269,6 @@ plantilla_definicion = PromptTemplate(
     )
 )
 
-# Plantilla para fuera de contexto
 plantilla_fuera_contexto = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
@@ -728,7 +1281,6 @@ plantilla_fuera_contexto = PromptTemplate(
     )
 )
 
-# Plantilla para error o sin información
 plantilla_sin_info = PromptTemplate(
     input_variables=["contexto", "conversacion", "pregunta"],
     template=(
@@ -741,7 +1293,6 @@ plantilla_sin_info = PromptTemplate(
     )
 )
 
-# Plantilla para saludo/inicio
 plantilla_saludo = PromptTemplate(
     input_variables=["contexto"],
     template=(
@@ -750,7 +1301,6 @@ plantilla_saludo = PromptTemplate(
     )
 )
 
-# Plantilla para despedida
 plantilla_despedida = PromptTemplate(
     input_variables=["contexto"],
     template=(
@@ -759,8 +1309,20 @@ plantilla_despedida = PromptTemplate(
     )
 )
 
+plantilla_sugerencias = PromptTemplate(
+    input_variables=["contexto", "conversacion"],
+    template=(
+        "{contexto}\n\n"
+        "Instrucciones específicas: Basándote en la conversación previa, genera 3 posibles preguntas de seguimiento "
+        "que el usuario podría querer hacer. Las preguntas deben ser cortas (máximo 8 palabras), relevantes al tema "
+        "de la conversación, y variadas en su enfoque (por ejemplo: una para profundizar, otra para un ejemplo, "
+        "y otra para un tema relacionado). Devuelve solo las 3 preguntas separadas por '|'.\n\n"
+        "Conversación previa:\n{conversacion}\n\n"
+        "Tres sugerencias de preguntas:"
+    )
+)
 
-# --- Modelos de solicitud ---
+# ===== MODELOS PYDANTIC =====
 class Pregunta(BaseModel):
     texto: str
     userId: str = None
@@ -779,6 +1341,15 @@ class FeedbackIn(BaseModel):
     respuesta: str
     rating: int
     comentario: str = None  # Campo opcional para comentarios
+
+class SolicitudSugerencias(BaseModel):
+    userId: str = None
+    chatToken: str = None
+    history: list = None  # [{sender, text, timestamp}]
+
+class SugerenciasIn(BaseModel):
+    history: list = None  # [{sender, text, timestamp}]
+
 
 # --- Endpoint principal mejorado ---
 @app.post("/preguntar")
@@ -807,133 +1378,15 @@ def preguntar(pregunta: Pregunta):
     # Patrones para diferentes tipos de preguntas
     patrones_tipo_pregunta = {
         "saludo": [r"^(hola|buenos días|buenas tardes|buenas noches|saludos|hey|qué tal|cómo estás|cómo va|buen día|hi|hello)"],
-        
         "despedida": [r"^(adiós|chao|hasta luego|nos vemos|gracias por tu ayuda|gracias|hasta pronto|me voy|bye|hasta mañana|que tengas buen día|hasta la próxima)$"],
-        
-        "definicion": [r"(qué|que) (es|son|significa|significan) (un|una|el|la|los|las)?", 
-                      r"define|definir|definición|significado de", 
-                      r"concepto de", 
-                      r"explica (el|la) (concepto|término|idea) de", 
-                      r"(me puedes|podrías) (decir|explicar) (qué|que) (es|son)"],
-        
-        "ejemplo": [r"(dame|da|muestra|pon|proporciona) (un|unos|algunos)? ejemplos?", 
-                   r"ejemplos? de", 
-                   r"(ilustra|ilustración) con (un|unos) ejemplos?", 
-                   r"caso práctico de", 
-                   r"(cómo|como) se (aplica|implementa|usa) en la práctica", 
-                   r"(me puedes|podrías) dar (un|unos) ejemplos?"],
-        
-        "comparacion": [r"(compara|comparación|diferencias?|similitudes?) (entre|de)", 
-                       r"(qué|que|cuál|cual) es (mejor|peor|más efectivo|más eficiente)", 
-                       r"(ventajas|desventajas) (de|entre)", 
-                       r"(contrasta|contraste) (entre|de)", 
-                       r"(en qué|que) se (diferencia|diferencian|distingue|distinguen)", 
-                       r"(qué|que) tienen en común"],
-        
-        "resumen": [r"(resume|resumen|síntesis|sintetiza)", 
-                   r"(en pocas palabras|brevemente|concisamente)", 
-                   r"(puedes|podrías) (resumir|sintetizar)", 
-                   r"(dime|explica) lo más importante de", 
-                   r"(puntos|aspectos) (principales|clave|fundamentales) de", 
-                   r"(resumen|síntesis) (breve|conciso|corto) de"],
-        
-        "aclaracion": [r"(puedes|podrías) (explicar|aclarar|clarificar) (mejor|de nuevo|otra vez|de otra manera)", 
-                      r"no (entiendo|comprendo|me queda claro)", 
-                      r"(me puedes|podrías) (explicar|aclarar) (con otras palabras|de forma más sencilla)", 
-                      r"(no me quedó|no quedó) claro", 
-                      r"(puedes|podrías) (simplificar|simplificarlo)", 
-                      r"(estoy confundido|tengo dudas) (sobre|acerca de)"],
-        
-        "seguimiento": [r"(y|pero) (qué|que|cómo|como) (sobre|acerca de)", 
-                       r"(puedes|podrías) (ampliar|expandir|profundizar)", 
-                       r"(háblame|cuéntame) más (sobre|acerca de)", 
-                       r"(quiero|me gustaría) saber más (sobre|acerca de)", 
-                       r"(puedes|podrías) (elaborar|desarrollar) más (sobre|acerca de)", 
-                       r"(y|pero) (respecto a|en cuanto a)"],
-        
+        "definicion": [r"(qué|que) (es|son|significa|significan) (un|una|el|la|los|las)?", r"define|definir|definición|significado de", r"concepto de", r"explica (el|la) (concepto|término|idea) de", r"(me puedes|podrías) (decir|explicar) (qué|que) (es|son)"],
+        "ejemplo": [r"(dame|da|muestra|pon|proporciona) (un|unos|algunos)? ejemplos?", r"ejemplos? de", r"(ilustra|ilustración) con (un|unos) ejemplos?", r"caso práctico de", r"(cómo|como) se (aplica|implementa|usa) en la práctica", r"(me puedes|podrías) dar (un|unos) ejemplos?"],
+        "comparacion": [r"(compara|comparación|diferencias?|similitudes?) (entre|de)", r"(qué|que|cuál|cual) es (mejor|peor|más efectivo|más eficiente)", r"(ventajas|desventajas) (de|entre)", r"(contrasta|contraste) (entre|de)", r"(en qué|que) se (diferencia|diferencian|distingue|distinguen)", r"(qué|que) tienen en común"],
+        "resumen": [r"(resume|resumen|síntesis|sintetiza)", r"(en pocas palabras|brevemente|concisamente)", r"(puedes|podrías) (resumir|sintetizar)", r"(dime|explica) lo más importante de", r"(puntos|aspectos) (principales|clave|fundamentales) de"],
+        "aclaracion": [r"(puedes|podrías) (explicar|aclarar|clarificar) (mejor|de nuevo|otra vez|de otra manera)", r"no (entiendo|comprendo|me queda claro)", r"(me puedes|podrías) (explicar|aclarar) (con otras palabras|de forma más sencilla)", r"(no me quedó|no quedó) claro", r"(puedes|podrías) (simplificar|simplificarlo)", r"(estoy confundido|tengo dudas) (sobre|acerca de)"],
+        "seguimiento": [r"(y|pero) (qué|que|cómo|como) (sobre|acerca de)", r"(puedes|podrías) (ampliar|expandir|profundizar)", r"(háblame|cuéntame) más (sobre|acerca de)", r"(quiero|me gustaría) saber más (sobre|acerca de)", r"(puedes|podrías) (elaborar|desarrollar) más (sobre|acerca de)", r"(y|pero) (respecto a|en cuanto a)"],
         "fuera_contexto": [r"(clima|tiempo|deportes|política|receta|cocina|salud personal|finanzas personales)"],
-        
-        "aplicacion": [r"(cómo|como) (se aplica|se implementa|se utiliza)", 
-                      r"(aplicaciones|usos) (de|para)", 
-                      r"(dónde|donde) se (usa|utiliza|aplica)", 
-                      r"(para qué|para que) (sirve|se usa)", 
-                      r"(beneficios|ventajas) de (usar|utilizar|implementar)", 
-                      r"(casos|escenarios) de uso"],
-        
-        "historia": [r"(historia|origen|evolución) (de|del|de la)", 
-                    r"(cuándo|cuando) (surgió|comenzó|se creó|se desarrolló)", 
-                    r"(quién|quien) (inventó|creó|desarrolló)", 
-                    r"(cómo|como) (ha evolucionado|ha cambiado|se ha desarrollado)", 
-                    r"(línea de tiempo|cronología) (de|del|de la)"],
-        
-        "proceso": [r"(cómo|como) (funciona|opera|trabaja)", 
-                   r"(pasos|etapas|fases) (para|de|del|de la)", 
-                   r"(proceso|procedimiento|metodología) (de|para)", 
-                   r"(explica|describe) (el proceso|los pasos|la metodología) (de|para)", 
-                   r"(cómo|como) (implementar|desarrollar|crear)"],
-        
-        "problema": [r"(cómo|como) (resolver|solucionar|abordar)", 
-                    r"(problema|dificultad|desafío) (con|de|en)", 
-                    r"(error|fallo|bug) (en|con|de)", 
-                    r"(no (funciona|sirve|trabaja))", 
-                    r"(tengo problemas|tengo dificultades) (con|para)"],
-        
-        "opinion": [r"(qué|que) (opinas|piensas|crees) (sobre|acerca de)", 
-                   r"(cuál|cual) es tu (opinión|punto de vista) (sobre|acerca de)", 
-                   r"(estás|estas) de acuerdo (con|en que)", 
-                   r"(crees|piensas) que (es|sea|sería) (mejor|peor|adecuado)", 
-                   r"(recomendarías|recomiendas)"],
-        
-        "etica": [r"(ética|etica|moral|implicaciones éticas) (de|en|sobre)", 
-                 r"(problemas|cuestiones|dilemas) (éticos|eticos|morales) (de|en|sobre)", 
-                 r"(consecuencias|impacto) (social|ético|etico) (de|del|de la)", 
-                 r"(responsabilidad|responsabilidades) (ética|etica|moral) (en|de)", 
-                 r"(está bien|es correcto|es ético|es etico) (usar|utilizar|implementar)"],
-        
-        "futuro": [r"(futuro|porvenir) (de|del|de la)", 
-                  r"(cómo|como) (evolucionará|cambiará|se desarrollará) (en el futuro)", 
-                  r"(tendencias|direcciones) (futuras|emergentes) (en|de)", 
-                  r"(qué|que) (podemos esperar|veremos) (en el futuro|próximamente)", 
-                  r"(predicciones|pronósticos) (sobre|acerca de)"],
-        
-        "matematicas": [r"(fórmula|formula|ecuación|ecuacion) (de|para)", 
-                       r"(cómo|como) (calcular|computar|resolver)", 
-                       r"(demostración|demostracion|prueba) (de|del|de la)", 
-                       r"(teorema|lema|corolario) (de|sobre)", 
-                       r"(matemáticas|matematicas|cálculo|calculo|álgebra|algebra) (de|en|para)"],
-        
-        "algoritmo": [r"(algoritmo|método|metodo) (de|para)", 
-                     r"(cómo|como) (implementar|programar) (el algoritmo|la técnica)", 
-                     r"(complejidad|eficiencia) (del algoritmo|de la técnica)", 
-                     r"(pseudocódigo|pseudocodigo|código|codigo) (de|para|del)", 
-                     r"(optimización|optimizacion) (de|del) (algoritmo|método|metodo)"],
-        
-        "evaluacion": [r"(cómo|como) (evaluar|medir|valorar)", 
-                      r"(métricas|metricas|indicadores) (de|para)", 
-                      r"(evaluación|evaluacion|medición|medicion) (de|del|de la)", 
-                      r"(criterios|parámetros|parametros) (para|de) (evaluar|medir)", 
-                      r"(qué|que) tan (bueno|efectivo|eficiente) es"],
-        
-        "herramientas": [r"(herramientas|instrumentos|software) (para|de)", 
-                        r"(qué|que) (herramientas|software|programas) (usar|utilizar|se recomiendan)", 
-                        r"(cómo|como) (usar|utilizar) (la herramienta|el software)", 
-                        r"(alternativas|opciones) (a|de|para)", 
-                        r"(mejor|mejores) (herramienta|herramientas|software) (para|de)"],
-        
-        "implementacion": [r"(cómo|como) (implementar|programar|codificar)", 
-                          r"(implementación|implementacion|desarrollo) (de|del|de la)", 
-                          r"(código|codigo|programa) (para|de)", 
-                          r"(lenguaje|framework|biblioteca) (para|de)", 
-                          r"(arquitectura|diseño|diseno) (de|del|de la) (sistema|aplicación|aplicacion|programa)"],
-                          
-        "syllabus": [r"(syllabus|programa|temario|contenido|plan) (del|de la|de|del) (curso|materia|asignatura|clase)", 
-                   r"(coordinador|profesor|docente|instructor) (del|de la|de|del) (curso|materia|asignatura|clase)",
-                   r"(quién|quien) (es el|es la|es) (coordinador|profesor|docente|instructor)",
-                   r"(cómo|como) (se|me) (evalúa|califica|puntúa) (en el|en la|en este|en) (curso|materia|asignatura|clase)",
-                   r"(cuáles|cuales) son (los|las) (temas|contenidos|unidades|módulos) (del|de la|de|del) (curso|materia|asignatura|clase)",
-                   r"(fecha|día|hora|horario|calendario) (de|del|de la|para) (entrega|examen|evaluación|clase|curso)",
-                   r"(bibliografía|lecturas|textos|libros) (recomendados|obligatorios|del curso|de la materia)",
-                   r"(política|reglas|normas) (de|para) (asistencia|participación|entregas|evaluación)"],
+        "syllabus": [r"(syllabus|programa|temario|contenido|plan) (del|de la|de|del) (curso|materia|asignatura|clase)", r"(coordinador|profesor|docente|instructor) (del|de la|de|del) (curso|materia|asignatura|clase)", r"(quién|quien) (es el|es la|es) (coordinador|profesor|docente|instructor)", r"(cómo|como) (se|me) (evalúa|califica|puntúa) (en el|en la|en este|en) (curso|materia|asignatura|clase)", r"(cuáles|cuales) son (los|las) (temas|contenidos|unidades|módulos) (del|de la|de|del) (curso|materia|asignatura|clase)", r"(fecha|día|hora|horario|calendario) (de|del|de la|para) (entrega|examen|evaluación|clase|curso)", r"(bibliografía|lecturas|textos|libros) (recomendados|obligatorios|del curso|de la materia)", r"(política|reglas|normas) (de|para) (asistencia|participación|entregas|evaluación)"],
     }
     
     tipo_pregunta = None
@@ -946,119 +1399,196 @@ def preguntar(pregunta: Pregunta):
             break
     
     logger.info(f"Tipo de pregunta detectado: {tipo_pregunta if tipo_pregunta else 'general'}")
-    
-    # Seleccionar la plantilla adecuada según el tipo de pregunta y la complejidad
-    if tipo_pregunta == "saludo":
-        plantilla = plantilla_saludo
-        logger.info("Usando plantilla de saludo")
-    elif tipo_pregunta == "despedida":
-        plantilla = plantilla_despedida
-        logger.info("Usando plantilla de despedida")
-    elif tipo_pregunta == "definicion":
-        plantilla = plantilla_definicion
-        logger.info("Usando plantilla de definición")
-    elif tipo_pregunta == "ejemplo":
-        plantilla = plantilla_ejemplo
-        logger.info("Usando plantilla de ejemplo")
-    elif tipo_pregunta == "comparacion":
-        plantilla = plantilla_comparacion
-        logger.info("Usando plantilla de comparación")
-    elif tipo_pregunta == "resumen":
-        plantilla = plantilla_resumen
-        logger.info("Usando plantilla de resumen")
-    elif tipo_pregunta == "aclaracion":
-        plantilla = plantilla_aclaracion
-        logger.info("Usando plantilla de aclaración")
-    elif tipo_pregunta == "seguimiento":
-        plantilla = plantilla_seguimiento
-        logger.info("Usando plantilla de seguimiento")
-    elif tipo_pregunta == "fuera_contexto":
-        plantilla = plantilla_fuera_contexto
-        logger.info("Usando plantilla fuera de contexto")
-    elif tipo_pregunta == "syllabus":
-        plantilla = plantilla_especifica
-        logger.info("Usando plantilla específica para syllabus")
-    elif tipo_pregunta == "plantilla_especifica":
-        plantilla = plantilla_especifica
-        logger.info("Usando plantilla plantilla_especifica")
-    else:
-        # Si no se detecta un tipo específico, usar la plantilla según la complejidad
-        if tipo_respuesta == "detailed":
-            plantilla = plantilla_detallada
-            logger.info("Usando plantilla detallada")
-        elif tipo_respuesta == "concise":
-            plantilla = plantilla_concisa
-            logger.info("Usando plantilla concisa")
-        else:
-            plantilla = plantilla_mixta
-            logger.info("Usando plantilla mixta")
 
-
-    # Formatear el prompt según la plantilla seleccionada
-    prompt_formateado = plantilla.format(
-        contexto=contexto_base,
-        conversacion=conversacion,
-        pregunta=pregunta.texto
-    )
-    
-    logger.info(f"Tipo de respuesta detectado: {tipo_respuesta}")
+    # ========================================================================
+    # ===== INICIO DE LA MEJORA: EXPANSIÓN DE CONSULTA PARA MEJOR BÚSQUEDA =====
+    # ========================================================================
     
     try:
-        if cadena:
-            # Usar la cadena de QA con recuperación
-            if using_vector_db:  # Si estamos usando FAISS/RetrievalQA
-                try:
-                    result = cadena({"query": prompt_formateado})
-                    respuesta = result["result"]
-                    
-                    # Extraer y mostrar las fuentes utilizadas
-                    if "source_documents" in result:
-                        fuentes = [doc.metadata.get("source", "Desconocido") for doc in result["source_documents"]]
-                        logger.info(f"Fuentes utilizadas: {fuentes}")
-                except Exception as retrieval_error:
-                    logger.error(f"Error en recuperación con FAISS: {retrieval_error}")
-                    # Fallback inmediato a procesamiento en memoria
-                    if fragmentos:
-                        result = cadena({"input_documents": fragmentos, "question": prompt_formateado})
-                        respuesta = result["output_text"]
-                    else:
-                        respuesta = "Lo siento, no puedo acceder a la información en este momento."
-            else:  # Si estamos usando el fallback con load_qa_chain
-                # Para load_qa_chain necesitamos pasar los documentos explícitamente
-                if fragmentos:
-                    result = cadena({"input_documents": fragmentos, "question": prompt_formateado})
-                    respuesta = result["output_text"]
-                else:
-                    respuesta = "No tengo información suficiente para responder a esa pregunta."
-            
-            # Postprocesamiento para mejorar la presentación
-            respuesta = respuesta.strip()
-            # Eliminar frases repetitivas como "como asistente educativo"
-            respuesta = re.sub(r'Como (un )?asistente educativo( conversacional)?,?', '', respuesta)
-            respuesta = re.sub(r'Basado en el syllabus( del curso)?,?', '', respuesta)
-            
-            # Simplificar expresiones comunes
-            respuesta = re.sub(r'Es importante (mencionar|destacar|señalar) que', '', respuesta)
-            
-            # Limpiar espacios en blanco múltiples y saltos de línea excesivos
-            respuesta = re.sub(r'\n{3,}', '\n\n', respuesta)
-            respuesta = re.sub(r' {2,}', ' ', respuesta)
-            respuesta = respuesta.strip()
-            
-            # Aplicar reglas según el tipo de respuesta
-            if tipo_respuesta == "concise" and len(respuesta.split()) > 50:
-                # Si la respuesta concisa es muy larga, intentar recortarla
-                sentences = re.split(r'[.!?]\s+', respuesta)
-                if len(sentences) > 3:
-                    respuesta = '. '.join(sentences[:3]) + '.'
-        else:
-            # Respuesta predeterminada si no se pudo cargar el PDF
-            respuesta = "Lo siento, no puedo acceder a la información del syllabus en este momento. ¿Hay algo más en lo que pueda ayudarte?"
+        # Crear una cadena específica para reescribir la pregunta en una consulta de búsqueda
+        cadena_reescritura = LLMChain(llm=llm, prompt=plantilla_reescritura_pregunta, verbose=True)
         
-        # Si el usuario proporcionó ID y token de sesión, guardar la interacción en el historial
+        # Generar la consulta de búsqueda optimizada usando el historial y la pregunta actual
+        consulta_busqueda = cadena_reescritura.invoke({
+            "historial_chat": conversacion, 
+            "pregunta": pregunta.texto
+        })['text'].strip()
+        
+        logger.info(f"Pregunta original: '{pregunta.texto}'")
+        logger.info(f"Consulta de búsqueda optimizada: '{consulta_busqueda}'")
+
+    except Exception as e:
+        logger.error(f"Error al generar la consulta de búsqueda, usando pregunta original: {e}")
+        consulta_busqueda = pregunta.texto
+
+    # Siempre recuperar documentos relevantes primero, usando la consulta optimizada
+    documentos_relevantes = []
+    contexto_documentos = ""
+    
+    try:
+        if vector_store is not None:
+            # Recuperar documentos relevantes usando el retriever con la consulta optimizada
+            retriever = vector_store.as_retriever(
+                search_type="mmr",
+                search_kwargs={"k": 8, "lambda_mult": 0.5}
+            )
+            # Usamos la consulta de búsqueda generada, no la pregunta original del usuario
+            documentos_relevantes = retriever.get_relevant_documents(consulta_busqueda)
+            
+            # Formar el contexto a partir de los documentos recuperados
+            contexto_documentos = "\n".join([doc.page_content for doc in documentos_relevantes])
+            logger.info(f"Recuperados {len(documentos_relevantes)} documentos relevantes para la consulta: '{consulta_busqueda}'")
+            
+            fuentes = [doc.metadata.get("source", "Documento") for doc in documentos_relevantes]
+            logger.info(f"Fuentes utilizadas: {fuentes}")
+            
+        elif fragmentos:
+            # Fallback: usar algunos fragmentos si no hay vector store
+            import random
+            documentos_relevantes = random.sample(fragmentos, min(5, len(fragmentos)))
+            contexto_documentos = "\n".join([frag.page_content for frag in documentos_relevantes])
+            logger.info(f"Usando {len(documentos_relevantes)} fragmentos aleatorios como fallback")
+            
+    except Exception as e:
+        logger.error(f"Error al recuperar documentos: {e}")
+        contexto_documentos = ""
+
+    # Seleccionar la plantilla adecuada
+    plantilla_seleccionada = None
+    usar_retrieval_qa = False
+    
+    if tipo_pregunta == "saludo":
+        plantilla_seleccionada = plantilla_saludo
+        logger.info("Usando plantilla de saludo")
+    elif tipo_pregunta == "despedida":
+        plantilla_seleccionada = plantilla_despedida
+        logger.info("Usando plantilla de despedida")
+    elif tipo_pregunta == "definicion":
+        plantilla_seleccionada = plantilla_definicion
+        logger.info("Usando plantilla de definición")
+    elif tipo_pregunta == "ejemplo":
+        plantilla_seleccionada = plantilla_ejemplo
+        logger.info("Usando plantilla de ejemplo")
+    elif tipo_pregunta == "comparacion":
+        plantilla_seleccionada = plantilla_comparacion
+        logger.info("Usando plantilla de comparación")
+    elif tipo_pregunta == "resumen":
+        plantilla_seleccionada = plantilla_resumen
+        logger.info("Usando plantilla de resumen")
+    elif tipo_pregunta == "aclaracion":
+        plantilla_seleccionada = plantilla_aclaracion
+        logger.info("Usando plantilla de aclaración")
+    elif tipo_pregunta == "seguimiento":
+        plantilla_seleccionada = plantilla_seguimiento
+        logger.info("Usando plantilla de seguimiento")
+    elif tipo_pregunta == "fuera_contexto":
+        plantilla_seleccionada = plantilla_fuera_contexto
+        logger.info("Usando plantilla fuera de contexto")
+    elif tipo_pregunta == "syllabus":
+        plantilla_seleccionada = plantilla_especifica
+        logger.info("Usando plantilla específica para syllabus")
+    else:
+        usar_retrieval_qa = True
+        if tipo_respuesta == "detailed":
+            logger.info("Usando RetrievalQA con respuesta detallada")
+        elif tipo_respuesta == "concise":
+            logger.info("Usando RetrievalQA con respuesta concisa")
+        else:
+            logger.info("Usando RetrievalQA con respuesta mixta")
+
+    logger.info(f"👉 Tipo de respuesta detectado: {tipo_respuesta}")
+    
+    try:
+        respuesta = ""
+        
+        if usar_retrieval_qa and cadena and using_vector_db:
+            try:
+                result = cadena.invoke({"query": pregunta.texto})
+                respuesta = result["result"]
+                logger.info(f"Respuesta generada usando RetrievalQA con {'ChromaDB' if using_chroma else 'FAISS'}")
+            except Exception as retrieval_error:
+                logger.error(f"Error en RetrievalQA: {retrieval_error}")
+                plantilla_seleccionada = plantilla_mixta
+                usar_retrieval_qa = False
+                
+        if not usar_retrieval_qa and plantilla_seleccionada:
+            try:
+                if plantilla_seleccionada in [plantilla_saludo, plantilla_despedida]:
+                    prompt_formateado = plantilla_seleccionada.format(contexto=contexto_base)
+                else:
+                    template_modificado = (
+                        "{contexto}\n\n"
+                        "INFORMACIÓN RELEVANTE DE DOCUMENTOS:\n"
+                        "{contexto_documentos}\n\n"
+                        "{instrucciones_especificas}\n\n"
+                        "Conversación previa:\n{conversacion}\n\n"
+                        "Pregunta: {pregunta}\n\n"
+                        "Respuesta basada en documentos y contexto:"
+                    )
+                    template_original = plantilla_seleccionada.template
+                    instrucciones_match = re.search(r'Instrucciones específicas: ([^\\n]+(?:\\n[^\\n]+)*?)\\n\\n', template_original)
+                    instrucciones_especificas = instrucciones_match.group(1) if instrucciones_match else "Responde de manera clara y educativa."
+                    prompt_formateado = template_modificado.format(
+                        contexto=contexto_base,
+                        contexto_documentos=contexto_documentos if contexto_documentos else "No se encontraron documentos específicamente relevantes.",
+                        instrucciones_especificas=instrucciones_especificas,
+                        conversacion=conversacion,
+                        pregunta=pregunta.texto
+                    )
+                respuesta = llm.invoke(prompt_formateado)
+                logger.info(f"Respuesta generada usando plantilla personalizada con contexto de documentos")
+            except Exception as template_error:
+                logger.error(f"Error con plantilla personalizada: {template_error}")
+                respuesta = "Lo siento, no puedo procesar tu pregunta en este momento."
+                
+        elif not usar_retrieval_qa and not plantilla_seleccionada:
+            try:
+                prompt_fallback_general = f"""
+                {contexto_base}
+                
+                INFORMACIÓN RELEVANTE DE DOCUMENTOS:
+                {contexto_documentos if contexto_documentos else "No se encontraron documentos específicamente relevantes."}
+                
+                CONVERSACIÓN PREVIA:
+                {conversacion}
+                
+                PREGUNTA DEL ESTUDIANTE: {pregunta.texto}
+                
+                Responde de manera educativa y clara, usando la información de los documentos cuando sea relevante:
+                """
+                respuesta = llm.invoke(prompt_fallback_general)
+                logger.info("Respuesta generada usando fallback general con contexto")
+            except Exception as fallback_error:
+                logger.error(f"Error en fallback general: {fallback_error}")
+                respuesta = "Lo siento, no puedo procesar tu pregunta en este momento."
+
+        # =============================================================
+        # ===== INICIO DE LA SOLUCIÓN RECOMENDADA Y SIMPLIFICADA =====
+        # =============================================================
+        # Post-procesamiento SIMPLIFICADO Y CORREGIDO
+        
+        # 1. Limpiar saltos de línea que cortan palabras y otros artefactos del LLM.
+        #    Esta función es la clave para resolver el problema de las palabras cortadas.
+        respuesta_limpia = clean_llm_response(respuesta)
+        
+        # 2. Eliminar frases introductorias genéricas que el bot pueda añadir.
+        respuesta_limpia = re.sub(r'^Como (un )?asistente educativo( conversacional)?,?\s*', '', respuesta_limpia, flags=re.IGNORECASE)
+        respuesta_limpia = re.sub(r'^Basado en (el syllabus|los documentos|la información)( del curso)?,?\s*', '', respuesta_limpia, flags=re.IGNORECASE)
+        respuesta_limpia = re.sub(r'^¡Claro! Aquí tienes un resumen:\s*', '', respuesta_limpia, flags=re.IGNORECASE)
+
+        # 3. Normalizar múltiples saltos de línea a un máximo de uno (para párrafos).
+        respuesta_limpia = re.sub(r'\n{3,}', '\n\n', respuesta_limpia)
+        
+        # 4. Asegurar que el texto final no tenga espacios en blanco al inicio o al final.
+        respuesta = respuesta_limpia.strip()
+        
+        # ===========================================================
+        # ===== FIN DE LA SOLUCIÓN RECOMENDADA Y SIMPLIFICADA =====
+        # =============================================================
+
+        # Guardar la interacción en el historial
         if pregunta.userId and pregunta.chatToken:
             try:
-                # Recuperar historial actual
                 db = SessionLocal()
                 session = db.query(ChatSession).filter(
                     ChatSession.user_id == pregunta.userId,
@@ -1067,18 +1597,15 @@ def preguntar(pregunta: Pregunta):
                 
                 history = []
                 if session:
-                    # Si existe la sesión, cargar el historial
                     import json
                     if isinstance(session.history, str):
                         history = json.loads(session.history)
                     else:
                         history = session.history
                 
-                # Añadir la nueva interacción
                 history.append({"sender": "user", "text": pregunta.texto, "timestamp": datetime.now().isoformat()})
                 history.append({"sender": "bot", "text": respuesta, "timestamp": datetime.now().isoformat()})
                 
-                # Guardar o actualizar
                 if session:
                     session.history = json.dumps(history)
                 else:
@@ -1096,8 +1623,19 @@ def preguntar(pregunta: Pregunta):
         
         return {"respuesta": respuesta}
     except Exception as e:
-        print(f"Error en la generación de respuesta: {e}")
+        logger.error(f"Error en la generación de respuesta: {e}")
         return {"error": str(e)}
+
+
+
+
+
+
+
+
+
+
+
 
 # --- Endpoints de autenticación ---
 @app.post("/auth/register")
@@ -1151,117 +1689,6 @@ async def register_user(request: Request):
     except Exception as e:
         logger.error(f"Error general en registro: {str(e)}")
         return {"success": False, "message": f"Error general: {str(e)}"}
-
-
-
-
-
-
-# Modelo para solicitar sugerencias
-class SolicitudSugerencias(BaseModel):
-    userId: str = None
-    chatToken: str = None
-    history: list = None  # [{sender, text, timestamp}]
-
-# Plantilla para generar sugerencias de preguntas
-plantilla_sugerencias = PromptTemplate(
-    input_variables=["contexto", "conversacion"],
-    template=(
-        "{contexto}\n\n"
-        "Instrucciones específicas: Basándote en la conversación previa, genera 3 posibles preguntas de seguimiento "
-        "que el usuario podría querer hacer. Las preguntas deben ser cortas (máximo 8 palabras), relevantes al tema "
-        "de la conversación, y variadas en su enfoque (por ejemplo: una para profundizar, otra para un ejemplo, "
-        "y otra para un tema relacionado). Devuelve solo las 3 preguntas separadas por '|'.\n\n"
-        "Conversación previa:\n{conversacion}\n\n"
-        "Tres sugerencias de preguntas:"
-    )
-)
-
-# Modelo para las sugerencias
-class SugerenciasIn(BaseModel):
-    history: list = None  # [{sender, text, timestamp}]
-
-@app.post("/sugerencias")
-def generar_sugerencias(solicitud: SolicitudSugerencias):
-    """Genera sugerencias de preguntas basadas en el historial de chat."""
-    try:
-        # Extraer el historial reciente
-        history = solicitud.history if solicitud.history else []
-        
-        # Si no hay historial, devolver sugerencias predeterminadas
-        if not history:
-            return {
-                "sugerencias": [
-                    "¿Qué es la inteligencia artificial?",
-                    "¿Cuáles son los temas principales del curso?",
-                    "¿Cómo se evalúa el curso?"
-                ]
-            }
-        
-        # Obtener las últimas interacciones para contexto
-        recent_history = history[-5:] if len(history) > 5 else history
-        
-        # Formatear el historial para el prompt
-        formatted_history = ""
-        for msg in recent_history:
-            if msg.get('sender') == 'user':
-                formatted_history += f"Usuario: {msg.get('text','')}\n"
-            elif msg.get('sender') == 'bot':
-                formatted_history += f"Bot: {msg.get('text','')}\n"
-        
-        # Crear prompt para generar sugerencias
-        prompt = f"""
-        Basado en la siguiente conversación, genera 3 preguntas sugeridas que el usuario podría querer hacer a continuación.
-        Las sugerencias deben ser breves (máximo 60 caracteres), relevantes al contexto de la conversación, y formuladas como preguntas directas.
-        Las sugerencias deben ser siempre en español.
-        Conversación:
-        {formatted_history}
-        
-        Genera solo las 3 preguntas, sin numeración ni explicación adicional.
-        """
-        
-        try:
-            # Generar sugerencias usando el modelo
-            response = llm.invoke(prompt)
-            
-            # Procesar la respuesta para extraer las sugerencias
-            sugerencias = []
-            for line in response.strip().split('\n'):
-                line = line.strip()
-                if line and not line.isspace():
-                    # Limpiar numeración si existe
-                    cleaned_line = re.sub(r'^\d+[\.\)-]\s*', '', line)
-                    sugerencias.append(cleaned_line)
-            
-            # Asegurar que tenemos exactamente 3 sugerencias
-            while len(sugerencias) < 3:
-                sugerencias.append("¿Necesitas más información sobre algún tema?")
-            
-            # Limitar a 3 sugerencias
-            sugerencias = sugerencias[:3]
-            
-            return {"sugerencias": sugerencias}
-        except Exception as e:
-            print(f"Error al generar sugerencias con el modelo: {e}")
-            # Devolver sugerencias predeterminadas en caso de error
-            return {
-                "sugerencias": [
-                    "¿Qué es la inteligencia artificial?",
-                    "¿Cuáles son los temas principales del curso?",
-                    "¿Cómo se evalúa el curso?"
-                ]
-            }
-    except Exception as e:
-        print(f"Error en generar_sugerencias: {e}")
-        return {"error": str(e)}
-
-
-
-
-
-
-
-
 
 @app.post("/auth/login")
 async def login_user(request: Request):
@@ -1479,9 +1906,125 @@ def get_message_ratings_endpoint(user_id: str, session_id: str):
         print("get_message_ratings_endpoint error:", e)
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- Endpoint de sugerencias ---
+@app.post("/sugerencias")
+def generar_sugerencias(solicitud: SolicitudSugerencias):
+    """Genera sugerencias de preguntas basadas en el historial de chat."""
+    try:
+        # Extraer el historial reciente
+        history = solicitud.history if solicitud.history else []
+        
+        # Si no hay historial, devolver sugerencias predeterminadas
+        if not history:
+            return {
+                "sugerencias": [
+                    "¿Qué es la inteligencia artificial?",
+                    "¿Cuáles son los temas principales del curso?",
+                    "¿Cómo se evalúa el curso?"
+                ]
+            }
+        
+        # Obtener las últimas interacciones para contexto
+        recent_history = history[-5:] if len(history) > 5 else history
+        
+        # Formatear el historial para el prompt
+        formatted_history = ""
+        for msg in recent_history:
+            if msg.get('sender') == 'user':
+                formatted_history += f"Usuario: {msg.get('text','')}\n"
+            elif msg.get('sender') == 'bot':
+                formatted_history += f"Bot: {msg.get('text','')}\n"
+        
+        # Crear prompt para generar sugerencias
+        prompt = f"""
+        Genera exactamente 3 preguntas cortas y directas (máximo 6 palabras cada una) basadas en esta conversación.
+        Las preguntas deben ser relevantes para el contexto de inteligencia artificial y el curso actual.
+        
+        Las sugerencias deben ser siempre en español.
+        REGLAS ESTRICTAS:
+        1. Máximo 6 palabras por pregunta
+        2. Usar palabras simples y directas
+        3. Siempre empezar con: ¿Qué, ¿Cómo, ¿Cuál, ¿Por qué, ¿Dónde
+        4. NO usar palabras técnicas largas
+        5. Ser específico pero conciso
+        6. Relacionado con inteligencia artificial
+        
+        Ejemplos de formato correcto:
+        - ¿Qué son las redes neuronales?
+        - ¿Cómo funciona el machine learning?
+        - ¿Cuál es la diferencia principal?
 
+        Conversación:
+        {formatted_history}
+        
+        Responde SOLO las 3 preguntas, una por línea, sin números ni explicaciones adicionales:
+        """
+        
+        try:
+            # Verificar que el modelo LLM esté disponible
+            if llm is None:
+                logger.warning("LLM no está disponible para generar sugerencias")
+                return {
+                    "sugerencias": [
+                        "¿Puedes explicar más sobre este tema?",
+                        "¿Qué ejemplos hay de esto?",
+                        "¿Cómo se aplica en la práctica?"
+                    ]
+                }
+            
+            # Generar sugerencias usando el modelo
+            response = llm.invoke(prompt)
+            
+            # Procesar la respuesta para extraer las sugerencias
+            sugerencias = []
+            for line in response.strip().split('\n'):
+                line = line.strip()
+                if line and not line.isspace():
+                    # Limpiar numeración si existe
+                    cleaned_line = re.sub(r'^\d+[\.\)-]\s*', '', line)
+                    # Limpiar signos de interrogación dobles
+                    cleaned_line = re.sub(r'¿¿+', '¿', cleaned_line)
+                    cleaned_line = re.sub(r'\?\?+', '?', cleaned_line)
+                    # Asegurar que termine con signo de interrogación si es una pregunta
+                    if not cleaned_line.endswith('?') and ('qué' in cleaned_line.lower() or 'cómo' in cleaned_line.lower() or 'cuál' in cleaned_line.lower() or 'por qué' in cleaned_line.lower()):
+                        cleaned_line += '?'
+                    sugerencias.append(cleaned_line)
+            
+            # Asegurar que tenemos exactamente 3 sugerencias
+            while len(sugerencias) < 3:
+                sugerencias.append("¿Necesitas más información sobre algún tema?")
+            
+            # Limitar a 3 sugerencias y asegurar que no sean muy largas
+            sugerencias = sugerencias[:3]
+            sugerencias = [s[:120] + "..." if len(s) > 120 else s for s in sugerencias]
+            
+            return {"sugerencias": sugerencias}
+            
+        except Exception as e:
+            logger.error(f"Error al generar sugerencias con el modelo: {e}")
+            # Devolver sugerencias predeterminadas en caso de error
+            return {
+                "sugerencias": [
+                    "¿Puedes explicar más sobre este tema?",
+                    "¿Qué ejemplos hay de esto?",
+                    "¿Cómo se aplica en la práctica?"
+                ]
+            }
+    except Exception as e:
+        logger.error(f"Error en generar_sugerencias: {e}")
+        return {"error": str(e)}
+
+# ===== INICIALIZACIÓN DEL SERVIDOR =====
 # Si se ejecuta directamente este script
 if __name__ == "__main__":
     import uvicorn
     print("Iniciando servidor FastAPI...")
+    print(f"Configuración de IA:")
+    print(f"  - ChromaDB: {'Activo' if using_chroma else 'Inactivo'}")
+    print(f"  - FAISS: {'Activo' if using_vector_db and not using_chroma else 'Inactivo'}")
+    print(f"  - Vector Store: {'Disponible' if using_vector_db else 'No disponible'}")
+    print(f"  - Documentos cargados: {len(documentos) if documentos else 0}")
+    print(f"  - Fragmentos generados: {len(fragmentos) if fragmentos else 0}")
+    print(f"  - LLM disponible: {'Sí' if llm else 'No'}")
+    print(f"  - Cadena de QA disponible: {'Sí' if cadena else 'No'}")
     uvicorn.run(app, host="0.0.0.0", port=8000)
