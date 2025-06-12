@@ -23,6 +23,12 @@ logger = logging.getLogger("chatbot_app")
 # Crear la aplicación FastAPI
 app = FastAPI()
 
+# Ruta para manejar redirecciones incorrectas de /pages/index.html
+@app.get("/pages/index.html")
+def serve_pages_index_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/", status_code=301)
+
 # Variable global para el sistema IA
 ai_system_instance = None
 ai_system_ready = False
@@ -37,13 +43,23 @@ app.add_middleware(
     expose_headers=["X-Request-ID", "X-Processing-Time"]
 )
 
-# Montar archivos estáticos
+# Montar archivos estáticos - CONFIGURACIÓN CORREGIDA
 app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 app.mount("/assets", StaticFiles(directory="../frontend/assets"), name="assets")
 app.mount("/pages", StaticFiles(directory="../frontend/pages"), name="pages")
 
 # Configurar executor para tareas asíncronas
 executor = ThreadPoolExecutor(max_workers=4)
+
+# Ruta raíz - PRINCIPAL
+@app.get("/")
+def serve_index():
+    return FileResponse("../frontend/index.html")
+
+# Agregar ruta adicional para servir index.html directamente
+@app.get("/index.html")
+def serve_index_direct():
+    return FileResponse("../frontend/index.html")
 
 @app.on_event("startup")
 async def startup_event():
@@ -206,11 +222,6 @@ async def save_to_history_safe_silent(user_id, chat_token, pregunta, respuesta):
         await loop.run_in_executor(executor, lambda: save_to_history_safe(user_id, chat_token, pregunta, respuesta))
     except:
         pass  # Ignorar todos los errores
-
-# Ruta raíz
-@app.get("/")
-def serve_index():
-    return FileResponse("../frontend/index.html")
 
 # Endpoint de verificación de conexión básica
 @app.get("/check_connection")
@@ -665,6 +676,16 @@ def get_ai_system_info():
 # Inicialización del servidor
 if __name__ == "__main__":
     import uvicorn
+    
+    # Agregar una ruta catch-all para manejar cualquier ruta no encontrada
+    @app.get("/{full_path:path}")
+    def catch_all(full_path: str):
+        # Si la ruta contiene 'index.html' o termina en '/', servir el index principal
+        if 'index.html' in full_path or full_path.endswith('/') or full_path == '':
+            return FileResponse("../frontend/index.html")
+        # De lo contrario, devolver 404
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="File not found")
     
     print("=" * 60)
     print("🚀 CHATBOT EDUCATIVO - SERVIDOR FASTAPI")

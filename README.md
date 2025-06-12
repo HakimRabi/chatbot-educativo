@@ -1,4 +1,4 @@
-# UNAB-IA Mentor v0.4.6
+# UNAB-IA Mentor v0.4.7
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg) ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg) ![LangChain](https://img.shields.io/badge/LangChain-Integrado-purple.svg) ![Ollama](https://img.shields.io/badge/Ollama-Llama%203-orange.svg)
 
@@ -138,24 +138,38 @@ No requiere pasos adicionales. Simplemente abre `http://localhost:8000` en tu na
 6.  **Gestiona tus conversaciones:** Usa los botones "Nueva conversación" para empezar de cero o "Historial" para ver y cargar chats anteriores.
 
 ## Estructura del Proyecto
-/unab-ia-mentor
-├── /pdfs/
-│   └── tu_documento.pdf       # Documentos fuente para el RAG
-├── /chroma_db/                # Base de datos vectorial (generada)
-├── app.py                     # Lógica del backend (FastAPI)
-├── chat.js                    # Lógica del frontend (JavaScript)
-├── index.html                 # Página principal del chat
-├── index.css                  # Hoja de estilos
-├── login.html                 # (Opcional) Página de login separada
-├── .env                       # Archivo de configuración (local)
-└── README.md                  # Este archivo
+/chatbot-educativo/
+├── /backend/
+│   ├── app.py                     # Lógica principal del backend (FastAPI)
+│   ├── ai_system.py               # Lógica del sistema de IA (RAG, LLM)
+│   ├── models.py                  # Modelos de base de datos (SQLAlchemy)
+│   ├── requirements.txt           # Dependencias de Python
+│   └── ...                        # Otros módulos y archivos de configuración del backend
+├── /frontend/
+│   ├── index.html                 # Página principal del chat
+│   ├── login.html                 # Página de inicio de sesión
+│   ├── /assets/
+│   │   ├── /css/
+│   │   │   └── style.css          # Hojas de estilo (ej. style.css, index.css)
+│   │   ├── /js/
+│   │   │   ├── chat.js            # Lógica del chat en el frontend
+│   │   │   ├── login.js           # Lógica del login en el frontend
+│   │   │   └── ...                # Otros scripts JS
+│   │   └── /img/                  # (Opcional) Imágenes y otros recursos estáticos
+│   ├── /pages/                    # (Opcional) Otras páginas HTML (ej. about.html)
+│   │   └── ...
+├── /pdfs/                         # Documentos PDF fuente para el RAG
+│   └── tu_documento.pdf
+├── /chroma_db/                    # Base de datos vectorial (generada por ChromaDB)
+├── .env                           # Variables de entorno (configuración local)
+├── .gitignore                     # Archivos y carpetas a ignorar por Git
+└── README.md                      # Este archivo
 
 
 ## Futuras Mejoras
 
 - [ ] Implementar un sistema de caché más avanzado para las respuestas comunes.
 - [ ] Soporte para más tipos de documentos (.docx, .txt).
-- [ ] Mejorar la interfaz de usuario con un framework como React o Vue.js.
 - [ ] Panel de administración para visualizar el feedback de los usuarios.
 - [ ] Desplegar la aplicación en un servicio en la nube (ej. AWS, Google Cloud).
 

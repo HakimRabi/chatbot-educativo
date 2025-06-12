@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (userId && userName) {
         // Si hay sesión activa, redirigir al chat
-        window.location.href = '../index.html';
+        window.location.replace(window.location.origin + '/index.html');
     }
 
     // Verificar conexión con el backend
@@ -120,8 +120,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     timer: 2000,
                     showConfirmButton: false
                 }).then(() => {
-                    // Redirigir al chat
-                    window.location.href = '../index.html';
+                    // Redirigir al chat usando URL completa
+                    window.location.replace(window.location.origin + '/index.html');
                 });
             } else {
                 console.error('Error en login:', data);
