@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBot IA UNAB</title>
+    <link rel="stylesheet" href="assets/css/index.css">
+    <!-- Cargar marked.js con configuración mejorada -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    <style>
+        /* Estilos para el sistema de feedback */
+        .feedback-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            margin-top: 3px;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .feedback-question {
+            margin-right: 8px;
+        }
+
+        .star-rating {
+            display: inline-flex;
+            gap: 3px;
+        }
+
+        .star {
+            color: #ccc;
+            cursor: pointer;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .star:hover, .star.selected {
+            color: #FF9800;
+        }
+
+        .feedback-sent {
+            color: #4CAF50;
+            font-style: italic;
+            display: none;
+            margin-left: 8px;
+            font-size: 11px;
+        }
+
+        /* Estilo para mensajes del bot con feedback */
+        .message.bot {
+            position: relative;
+        }
+
+        .message.bot .message-content {
+            margin-bottom: 3px;
+        }
+        
+        /* Estilos para los botones de sugerencia */
+        .suggestion-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .suggestion-button {
+            background-color: #e9f5ff;
+            border: 1px solid #007bff;
+            color: #007bff;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .suggestion-button:hover {
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Configuración inicial de marked -->
+    <script>
+        // Configurar marked globalmente al cargar la página
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                sanitize: false,
+                smartLists: true,
+                smartypants: true,
+                headerIds: false,
+                mangle: false,
+                pedantic: false,
+                silent: false
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>UNAB-IA Mentor</h1>
+            <p>Asistente ChatBot Universidad Andres Bello v0.4.6 beta-testing</p>
+            <div class="user-info">
+                <span id="user-name"></span>
+                <button id="logout-button">Cerrar sesión</button>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Aquí se mostrarán los mensajes del chat -->
+        </div>
+
+        <!-- Contenedor para los botones de sugerencia -->
+        <div class="suggestion-container" id="suggestion-container">
+            <!-- Aquí se mostrarán los botones de sugerencia -->
+        </div>
+
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Escribe tu pregunta aquí...">
+            <button id="send-button">Enviar</button>
+        </div>
+        <div class="chat-footer">
+            <div class="session-controls">
+                <button id="new-session-button">Nueva conversación</button>
+                <button id="history-button">Historial</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para historial de conversaciones -->
+    <div id="history-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Historial de conversaciones</h2>
+            <div id="sessions-list">
+                <!-- Aquí se listarán las sesiones previas -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="assets/js/chat.js"></script>
+</body>
+</html>

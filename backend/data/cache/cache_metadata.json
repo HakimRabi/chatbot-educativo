@@ -1,0 +1,14 @@
+{
+  "created_at": "2025-06-11T18:02:11.748012",
+  "pdf_files": [
+    {
+      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\SYLLABUS.pdf",
+      "hash": "8c7a70ad3b1c3fc64cf4550f8a88e667e7818735b2b031ac202827c37b357179",
+      "size": 256105,
+      "mtime": 1749263230.1913443,
+      "name": "SYLLABUS.pdf"
+    }
+  ],
+  "total_fragments": 15,
+  "cache_version": "1.0"
+}
