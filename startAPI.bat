@@ -1,2 +1,2 @@
 cd backend
-python app.py
+python -m uvicorn app:app --reload
