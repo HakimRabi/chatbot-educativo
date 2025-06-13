@@ -11,6 +11,11 @@ import os
 from glob import glob
 import re
 
+# Importa estas dependencias al inicio del archivo
+from fastapi import APIRouter, Request, HTTPException, File, UploadFile
+import shutil
+from pathlib import Path
+
 # Create router for dashboard endpoints
 router = APIRouter()
 logger = logging.getLogger("dashboard")
@@ -30,6 +35,13 @@ llm = None
 fragmentos = []
 using_vector_db = False
 using_chroma = False
+
+
+# Define la ruta al directorio de PDFs
+# Esto asegura que la ruta sea correcta sin importar desde dónde se ejecute el script.
+PDFS_DIR = Path(__file__).parent / "data" / "pdfs"
+# PDFS_DIR.mkdir(parents=True, exist_ok=True)  # Crea el directorio si no existe
+
 
 def get_ai_system_info():
     """Obtiene información actualizada del sistema de IA"""
@@ -332,6 +344,58 @@ def generate_satisfaction_insights():
     except Exception as e:
         logger.error(f"Error generando insights: {e}")
         return {"error": str(e)}
+
+
+
+@router.post("/upload-pdf")
+async def upload_pdf_file(file: UploadFile = File(...)):
+    """
+    Endpoint para subir un archivo PDF.
+    Guarda el archivo y intenta recargar los documentos en el sistema de IA.
+    """
+    # 1. Validar que es un archivo PDF
+    if file.content_type != "application/pdf":
+        logger.warning(f"Intento de subir archivo no PDF: {file.filename} ({file.content_type})")
+        raise HTTPException(status_code=400, detail="Formato de archivo inválido. Solo se aceptan PDFs.")
+
+    # 2. Guardar el archivo de forma segura en la ruta corregida
+    save_path = PDFS_DIR / file.filename
+    try:
+        with save_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        logger.info(f"Archivo PDF '{file.filename}' guardado exitosamente en {save_path}")
+    except Exception as e:
+        logger.error(f"No se pudo guardar el archivo '{file.filename}': {e}")
+        raise HTTPException(status_code=500, detail=f"No se pudo guardar el archivo: {e}")
+    finally:
+        file.file.close()
+
+    # 3. Intentar recargar los documentos del sistema de IA (Paso Crítico)
+    try:
+        from app import ai_system_instance
+        if hasattr(ai_system_instance, 'load_documents'):
+            # Si existe un método para recargar, lo llamamos.
+            ai_system_instance.load_documents() 
+            logger.info("Se ha activado la recarga de documentos en el sistema de IA.")
+            message = "Archivo subido y sistema de IA actualizado."
+        else:
+            # Si no, informamos que se requiere un reinicio.
+            logger.warning("El sistema de IA no tiene un método 'load_documents'. Se requerirá un reinicio para que el nuevo PDF sea utilizado.")
+            message = "Archivo subido. Se requiere reiniciar el servidor para que el chatbot lo utilice."
+
+        return {"success": True, "filename": file.filename, "message": message}
+        
+    except Exception as e:
+        logger.error(f"Error al intentar recargar los documentos del sistema de IA: {e}")
+        # A pesar del error, el archivo se guardó. Informamos al usuario.
+        return {"success": True, "filename": file.filename, "message": "Archivo subido, pero no se pudo actualizar el chatbot automáticamente."}
+
+
+
+
+
+
+
 
 # Nuevo endpoint para estadísticas del dashboard
 @router.get("/stats")

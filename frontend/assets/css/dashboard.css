@@ -237,6 +237,39 @@ body {
     }
 }
 
+/* --- NUEVOS ESTILOS PARA EL BOTÓN DE CARGA --- */
+.btn-upload {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    font-size: 14px;
+    z-index: 10;
+}
+
+.btn-upload:hover {
+    transform: scale(1.1) rotate(90deg);
+    background-color: var(--secondary-color);
+}
+
+body.dark-mode .btn-upload {
+    background-color: var(--primary-color);
+}
+
+body.dark-mode .btn-upload:hover {
+    background-color: var(--secondary-color);
+}
 /* ===== STATS GRID ===== */
 .stats-grid {
     display: grid;
@@ -254,6 +287,7 @@ body {
     align-items: center;
     gap: 20px;
     transition: var(--transition);
+    position: relative; /* Clave para posicionar el botón de carga */
 }
 
 .stat-card:hover {

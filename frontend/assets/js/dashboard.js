@@ -140,6 +140,15 @@ class Dashboard {
         document.getElementById('ratingFilter').addEventListener('change', () => this.filterFeedback());
         document.getElementById('loadSuggestionsBtn').addEventListener('click', () => this.loadImprovementSuggestions());
 
+        // --- NUEVOS LISTENERS PARA CARGA DE PDF ---
+        document.getElementById('uploadPdfBtn').addEventListener('click', () => {
+            document.getElementById('pdfUploadInput').click();
+        });
+
+        document.getElementById('pdfUploadInput').addEventListener('change', (event) => {
+            this.handlePdfUpload(event);
+        });
+        
         document.getElementById('usersSearch').addEventListener('input', () => this.filterUsers());
         document.getElementById('statusFilter').addEventListener('change', () => this.filterUsers());
         document.getElementById('activityFilter').addEventListener('change', () => this.filterUsers());
@@ -186,6 +195,75 @@ class Dashboard {
                 this.showSection(section);
             });
         });
+    }
+
+
+    async handlePdfUpload(event) {
+        const file = event.target.files[0];
+
+        if (!file) {
+            return; // No se seleccionó archivo
+        }
+
+        if (file.type !== 'application/pdf') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Archivo Inválido',
+                text: 'Por favor, selecciona solo archivos PDF.'
+            });
+            event.target.value = ''; // Resetear el input
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        Swal.fire({
+            title: 'Subiendo archivo...',
+            text: `Subiendo ${file.name}`,
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/dashboard/upload-pdf`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                // Lanza un error con el mensaje del servidor si está disponible
+                throw new Error(result.detail || 'Error en la respuesta del servidor');
+            }
+
+            if (result.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    text: result.message || `El archivo ${result.filename} se ha subido correctamente.`
+                });
+                // Actualizar la sección del sistema para reflejar el nuevo conteo de PDFs
+                this.loadSystemHealth(); 
+            } else {
+                // Esto es por si la respuesta es OK pero success: false
+                throw new Error(result.message || 'La carga del archivo falló.');
+            }
+
+        } catch (error) {
+            console.error('Error al subir el PDF:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Carga',
+                text: error.message || 'No se pudo subir el archivo. Revisa la consola para más detalles.'
+            });
+        } finally {
+            // Limpiar el valor del input para permitir subir el mismo archivo de nuevo
+            event.target.value = '';
+        }
     }
 
     /**

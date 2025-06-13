@@ -322,6 +322,9 @@
                             </div>
                         </div>
                         <div class="stat-card">
+                            <button class="btn-upload" id="uploadPdfBtn" title="Subir nuevo PDF">
+                                <i class="fas fa-plus"></i>
+                            </button>
                             <div class="stat-icon" style="background: linear-gradient(135deg, #fd7e14, #ffc107);">
                                 <i class="fas fa-file-pdf"></i>
                             </div>
@@ -330,6 +333,7 @@
                                 <p>Archivos PDF</p>
                             </div>
                         </div>
+
                         <div class="stat-card">
                             <div class="stat-icon" style="background: linear-gradient(135deg, #17a2b8, #54d8e8);">
                                 <i class="fas fa-database"></i>
@@ -369,7 +373,8 @@
 
         </main>
     </div>
-
+    <input type="file" id="pdfUploadInput" accept=".pdf" style="display:none;">
+    
     <!-- Modal para detalles de feedback -->
     <div id="feedbackModal" class="modal">
         <div class="modal-content">
