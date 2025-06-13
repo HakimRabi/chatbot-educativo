@@ -1,178 +1,364 @@
-# UNAB-IA Mentor v0.4.7
+# Chatbot Educativo - UNAB IA Mentor
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg) ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg) ![LangChain](https://img.shields.io/badge/LangChain-Integrado-purple.svg) ![Ollama](https://img.shields.io/badge/Ollama-Llama%203-orange.svg)
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg) 
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg) 
+![LangChain](https://img.shields.io/badge/LangChain-Integrado-purple.svg) 
+![Ollama](https://img.shields.io/badge/Ollama-Llama%203-orange.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-Asistente académico inteligente diseñado para apoyar a estudiantes del curso "Fundamentos de Inteligencia Artificial" de la Universidad Andrés Bello. El sistema utiliza un modelo de lenguaje local (LLM) a través de Ollama y técnicas de Retrieval-Augmented Generation (RAG) para responder preguntas basadas en el material académico del curso.
+Asistente académico inteligente diseñado para apoyar a estudiantes del curso "Fundamentos de Inteligencia Artificial" de la Universidad Andrés Bello. El sistema utiliza modelos de lenguaje locales (LLM) a través de Ollama y técnicas de Retrieval-Augmented Generation (RAG) para responder preguntas basadas en el material académico del curso.
 
-## Tabla de Contenidos
-1.  [Acerca del Proyecto](#acerca-del-proyecto)
-2.  [Características Principales](#características-principales)
-3.  [Arquitectura del Sistema](#arquitectura-del-sistema)
-4.  [Stack Tecnológico](#stack-tecnológico)
-5.  [Instalación y Puesta en Marcha](#instalación-y-puesta-en-marcha)
-    * [Prerrequisitos](#prerrequisitos)
-    * [Configuración del Backend](#configuración-del-backend)
-    * [Configuración del Frontend](#configuración-del-frontend)
-6.  [Uso del Chatbot](#uso-del-chatbot)
-7.  [Estructura del Proyecto](#estructura-del-proyecto)
-8.  [Futuras Mejoras](#futuras-mejoras)
-9.  [Licencia](#licencia)
+## 📋 Tabla de Contenidos
+- [Características Principales](#-características-principales)
+- [Arquitectura del Sistema](#-arquitectura-del-sistema)
+- [Stack Tecnológico](#-stack-tecnológico)
+- [Instalación](#-instalación)
+- [Configuración](#-configuración)
+- [Uso](#-uso)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [API Documentation](#-api-documentation)
+- [Contribución](#-contribución)
+- [Licencia](#-licencia)
+- [Autores](#-autores)
 
-## Acerca del Proyecto
+## 🚀 Características Principales
 
-**UNAB-IA Mentor** nace como una herramienta de apoyo educativo para resolver dudas y facilitar el aprendizaje de los conceptos clave de la inteligencia artificial. El chatbot está conectado a una base de conocimientos documental (archivos PDF del curso) y es capaz de:
-* Responder preguntas específicas sobre el contenido del syllabus y material de estudio.
-* Mantener el contexto de la conversación para un diálogo fluido y natural.
-* Adaptar el estilo y la profundidad de sus respuestas según la intención del usuario.
+### 🧠 Sistema RAG Avanzado
+- **Base de conocimientos vectorial**: Utiliza ChromaDB para búsqueda semántica
+- **Procesamiento de PDFs**: Indexación automática de documentos académicos (syllabus del curso)
+- **Respuestas contextualizadas**: Genera respuestas basadas en el material del curso CINF103
 
-## Características Principales
+### 🤖 IA Local y Privada
+- **Ollama Integration**: Soporte para múltiples modelos (Llama 3, Mistral, etc.)
+- **Privacidad total**: Todo el procesamiento ocurre localmente
+- **Sin dependencias de APIs externas**: Funciona completamente offline
 
-* **🧠 Sistema RAG (Retrieval-Augmented Generation):** Utiliza una base de datos vectorial (ChromaDB con fallback a FAISS) para encontrar los fragmentos de texto más relevantes de los documentos PDF y así generar respuestas precisas y contextualizadas.
-* **🤖 LLM Local con Ollama:** Integra el modelo Llama 3 (u otros compatibles con Ollama), garantizando la privacidad y el control total sobre el motor de IA.
-* **🔍 Análisis de Intención y Complejidad:** El sistema analiza cada pregunta para determinar la intención del usuario (ej. definición, comparación, ejemplo) y la complejidad de la respuesta requerida, seleccionando la plantilla de prompt más adecuada para una respuesta de alta calidad.
-* **🔐 Autenticación y Sesiones de Usuario:** Incluye un sistema de registro e inicio de sesión. Las conversaciones son guardadas y asociadas a cada usuario en una base de datos MySQL, permitiendo consultar el historial.
-* **⭐️ Sistema de Feedback:** Los usuarios pueden calificar las respuestas del bot (1 a 5 estrellas) y dejar comentarios, lo que permite la recolección de datos para futuras mejoras del modelo.
-* **💡 Sugerencias Dinámicas:** Después de cada respuesta, el bot propone preguntas de seguimiento para guiar al usuario y facilitar la exploración de temas relacionados.
-* **🎨 Frontend Interactivo:** Interfaz de chat limpia y moderna construida con HTML, CSS y JavaScript, con renderizado de Markdown para una mejor legibilidad de las respuestas.
+### 👤 Gestión de Usuarios
+- **Autenticación segura**: Sistema de registro e inicio de sesión con hash de contraseñas
+- **Historial personalizado**: Cada usuario mantiene su propio historial de conversaciones
+- **Sesiones persistentes**: Las conversaciones se guardan automáticamente en MySQL
 
-## Arquitectura del Sistema
+### ⭐ Sistema de Feedback
+- **Calificación de respuestas**: Sistema de 5 estrellas para evaluar respuestas
+- **Comentarios detallados**: Los usuarios pueden dejar feedback específico
+- **Dashboard de analytics**: Panel para revisar métricas y estadísticas
 
-El proyecto sigue una arquitectura cliente-servidor desacoplada:
+### 💡 Funcionalidades Inteligentes
+- **Análisis de intención**: Detecta el tipo de pregunta y adapta la respuesta
+- **Sugerencias dinámicas**: Propone preguntas de seguimiento relevantes
+- **Renderizado Markdown**: Respuestas formateadas para mejor legibilidad
+- **Sistema de templates**: Templates dinámicos para diferentes tipos de respuesta
 
-1.  **Frontend:** Una aplicación web estática (HTML, CSS, JS) que se comunica con el backend a través de peticiones HTTP.
-2.  **Backend (FastAPI):** Un servidor API que recibe las preguntas del usuario.
-3.  **Capa de Orquestación (LangChain):** Gestiona la lógica de RAG, la selección de prompts y la interacción con el LLM.
-4.  **Motor de IA (Ollama):** Ejecuta el modelo de lenguaje Llama 3 de forma local.
-5.  **Base de Datos Vectorial (Chroma/FAISS):** Almacena y permite la búsqueda de los embeddings de los documentos.
-6.  **Base de Datos Relacional (MySQL):** Persiste la información de usuarios, sesiones e historial de chat.
+## 🏗️ Arquitectura del Sistema
 
-## Stack Tecnológico
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│    Frontend     │    │   FastAPI       │    │     Ollama      │
+│   (HTML/JS)     │◄──►│    Backend      │◄──►│   (LLM Local)   │
+│                 │    │                 │    │                 │
+│ • Chat UI       │    │ • Auth System   │    │ • Llama 3       │
+│ • Dashboard     │    │ • RAG Pipeline  │    │ • Mistral       │
+│ • Login System  │    │ • API Endpoints │    │ • Custom Models │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                               │
+                               ▼
+                    ┌─────────────────┐    ┌─────────────────┐
+                    │     MySQL       │    │   ChromaDB      │
+                    │                 │    │                 │
+                    │ • Users         │    │ • Vector Store  │
+                    │ • Conversations │    │ • PDF Content   │
+                    │ • Feedback      │    │ • Embeddings    │
+                    │ • Sessions      │    │ • Semantic Search│
+                    └─────────────────┘    └─────────────────┘
+```
 
-* **Backend:** Python, FastAPI, LangChain, SQLAlchemy
-* **Frontend:** HTML5, CSS3, JavaScript (Vanilla)
-* **LLM:** Ollama (Llama 3)
-* **Bases de Datos:**
-    * MySQL (Datos de usuario y conversaciones)
-    * ChromaDB / FAISS (Base de datos vectorial)
-* **Librerías Clave:** `pydantic`, `passlib`, `python-dotenv`, `marked.js`, `sweetalert2`
+## 🛠️ Stack Tecnológico
 
-## Instalación y Puesta en Marcha
+### Backend
+- **FastAPI**: Framework web moderno y rápido para APIs
+- **LangChain**: Orquestación de LLM y pipeline RAG
+- **SQLAlchemy**: ORM para manejo de base de datos
+- **Ollama**: Interface para modelos de lenguaje locales
+- **ChromaDB**: Base de datos vectorial para embeddings
+- **PyPDF**: Procesamiento y extracción de texto de PDFs
 
-Sigue estos pasos para ejecutar el proyecto en tu entorno local.
+### Frontend
+- **HTML5/CSS3**: Estructura y estilos modernos con diseño responsivo
+- **JavaScript Vanilla**: Lógica del cliente sin frameworks externos
+- **Marked.js**: Renderizado de Markdown en tiempo real
+- **SweetAlert2**: Modales y notificaciones elegantes
+
+### Bases de Datos
+- **MySQL**: Almacenamiento de usuarios, conversaciones y feedback
+- **ChromaDB**: Base de datos vectorial para búsqueda semántica
+
+### Librerías Principales
+```
+fastapi
+langchain-ollama
+chromadb
+sqlalchemy
+mysql-connector-python
+pypdf
+passlib[bcrypt]
+python-dotenv
+uvicorn
+```
+
+## 📦 Instalación
 
 ### Prerrequisitos
 
-* **Python 3.9+**
-* **Ollama instalado y ejecutándose:** [Descargar Ollama](https://ollama.com/)
-* **Modelo Llama 3:** Ejecuta `ollama pull llama3` en tu terminal.
-* **Servidor MySQL** instalado y accesible.
+1. **Python 3.9+**
+2. **Ollama**: [Descargar e instalar](https://ollama.com/)
+3. **MySQL Server 8.0+**
+4. **Git**
 
-### Configuración del Backend
+### Pasos de Instalación
 
-1.  **Clona el repositorio:**
-    ```bash
-    git clone [https://github.com/tu-usuario/unab-ia-mentor.git](https://github.com/tu-usuario/unab-ia-mentor.git)
-    cd unab-ia-mentor
-    ```
+1. **Clonar el repositorio**
+```bash
+git clone https://github.com/tu-usuario/chatbot-educativo.git
+cd chatbot-educativo
+```
 
-2.  **Crea un entorno virtual y actívalo:**
-    ```bash
-    python -m venv venv
-    # En Windows
-    venv\Scripts\activate
-    # En macOS/Linux
-    source venv/bin/activate
-    ```
+2. **Crear entorno virtual**
+```bash
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
+```
 
-3.  **Crea el archivo `requirements.txt`** con el siguiente contenido:
-    ```txt
-    fastapi
-    uvicorn[standard]
-    sqlalchemy
-    mysql-connector-python
-    langchain
-    langchain-community
-    langchain-ollama
-    pypdf
-    faiss-cpu
-    chromadb
-    passlib[bcrypt]
-    python-dotenv
-    ```
+3. **Instalar dependencias**
+```bash
+pip install -r requirements.txt
+```
 
-4.  **Instala las dependencias:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+4. **Instalar modelo Ollama**
+```bash
+ollama pull llama3
+# Modelos alternativos
+ollama pull mistral
+ollama pull codellama
+```
 
-5.  **Crea un archivo `.env`** en la raíz del proyecto y configúralo con tus credenciales de MySQL:
-    ```env
-    DB_USER="tu_usuario_mysql"
-    DB_PASSWORD="tu_password_mysql"
-    DB_HOST="127.0.0.1"
-    DB_PORT="3306"
-    DB_NAME="bd_chatbot"
-    ```
+## ⚙️ Configuración
 
-6.  **Crea la base de datos `bd_chatbot`** en tu servidor MySQL. Las tablas se crearán automáticamente al iniciar la aplicación por primera vez.
+### 1. Variables de Entorno
 
-7.  **Añade tus documentos:** Coloca los archivos PDF que servirán como base de conocimiento en la carpeta `/pdfs/`.
+Crear archivo `.env` en la carpeta `backend`:
 
-8.  **Inicia el servidor:**
-    ```bash
-    uvicorn app:app --reload
-    ```
-    El backend estará disponible en `http://localhost:8000`.
+```env
+# Base de Datos MySQL
+DB_USER=tu_usuario_mysql
+DB_PASSWORD=tu_password_mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=bd_chatbot
 
-### Configuración del Frontend
+# Configuración del Modelo Ollama
+OLLAMA_MODEL=llama3
+OLLAMA_URL=http://localhost:11434
 
-No requiere pasos adicionales. Simplemente abre `http://localhost:8000` en tu navegador, ya que FastAPI está configurado para servir el archivo `index.html` en la ruta raíz.
+# Configuración de la Aplicación
+SECRET_KEY=tu_clave_secreta_muy_segura_aqui
+DEBUG=True
+CACHE_TTL=3600
+```
 
-## Uso del Chatbot
+### 2. Base de Datos MySQL
 
-1.  **Registro/Login:** La primera vez, regístrate con un nombre, email y contraseña. Luego, inicia sesión.
-2.  **Interfaz de Chat:** Se presentará la ventana principal del chat.
-3.  **Realiza una pregunta:** Escribe tu pregunta en el campo de texto y presiona "Enviar" o la tecla Enter.
-4.  **Usa las sugerencias:** Haz clic en los botones de sugerencia para explorar temas relacionados.
-5.  **Califica las respuestas:** Usa el sistema de estrellas para dar tu feedback sobre la utilidad de cada respuesta.
-6.  **Gestiona tus conversaciones:** Usa los botones "Nueva conversación" para empezar de cero o "Historial" para ver y cargar chats anteriores.
+```sql
+CREATE DATABASE bd_chatbot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
 
-## Estructura del Proyecto
-/chatbot-educativo/
-├── /backend/
-│   ├── app.py                     # Lógica principal del backend (FastAPI)
-│   ├── ai_system.py               # Lógica del sistema de IA (RAG, LLM)
-│   ├── models.py                  # Modelos de base de datos (SQLAlchemy)
-│   ├── requirements.txt           # Dependencias de Python
-│   └── ...                        # Otros módulos y archivos de configuración del backend
-├── /frontend/
-│   ├── index.html                 # Página principal del chat
-│   ├── login.html                 # Página de inicio de sesión
-│   ├── /assets/
-│   │   ├── /css/
-│   │   │   └── style.css          # Hojas de estilo (ej. style.css, index.css)
-│   │   ├── /js/
-│   │   │   ├── chat.js            # Lógica del chat en el frontend
-│   │   │   ├── login.js           # Lógica del login en el frontend
-│   │   │   └── ...                # Otros scripts JS
-│   │   └── /img/                  # (Opcional) Imágenes y otros recursos estáticos
-│   ├── /pages/                    # (Opcional) Otras páginas HTML (ej. about.html)
-│   │   └── ...
-├── /pdfs/                         # Documentos PDF fuente para el RAG
-│   └── tu_documento.pdf
-├── /chroma_db/                    # Base de datos vectorial (generada por ChromaDB)
-├── .env                           # Variables de entorno (configuración local)
-├── .gitignore                     # Archivos y carpetas a ignorar por Git
-└── README.md                      # Este archivo
+### 3. Documentos PDF
 
+Coloca el syllabus y documentos académicos en `/backend/data/pdfs/`. El sistema los indexará automáticamente.
 
-## Futuras Mejoras
+## 🚀 Uso
 
-- [ ] Implementar un sistema de caché más avanzado para las respuestas comunes.
-- [ ] Soporte para más tipos de documentos (.docx, .txt).
-- [ ] Panel de administración para visualizar el feedback de los usuarios.
-- [ ] Desplegar la aplicación en un servicio en la nube (ej. AWS, Google Cloud).
+### Método 1: Usando el script batch (Windows)
 
-## Licencia
+```bash
+# Desde la raíz del proyecto
+startAPI.bat
+```
 
-Distribuido bajo la Licencia MIT. Ver `LICENSE` para más información.
+### Método 2: Manual
+
+```bash
+# Asegúrate de que Ollama esté ejecutándose
+ollama serve
+
+# Navegar al backend e iniciar servidor
+cd backend
+python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Acceder a la Aplicación
+
+1. **Frontend**: `http://localhost:8000` 
+2. **Login**: `http://localhost:8000/pages/login.html`
+3. **Dashboard**: `http://localhost:8000/pages/dashboard.html`
+4. **API Docs**: `http://localhost:8000/docs`
+
+### Funcionalidades Disponibles
+
+- **💬 Chat Inteligente**: Pregunta sobre contenidos del curso CINF103
+- **📚 Base de Conocimientos**: Respuestas basadas en el syllabus oficial
+- **📊 Dashboard**: Visualiza estadísticas y métricas de uso
+- **⭐ Sistema de Feedback**: Califica respuestas para mejorar el sistema
+- **🔍 Búsqueda Semántica**: Encuentra información relevante automáticamente
+
+## 📁 Estructura del Proyecto
+
+```
+chatbot-educativo/
+├── 📁 backend/
+│   ├── 🐍 app.py                    # Servidor FastAPI principal
+│   ├── 🧠 ai_system.py              # Sistema RAG y procesamiento IA
+│   ├── 🔐 auth.py                   # Sistema de autenticación
+│   ├── 💬 chat.py                   # Lógica del chat y conversaciones
+│   ├── ⚙️ config.py                 # Configuración y variables
+│   ├── 📊 dashboard.py              # Endpoints del dashboard
+│   ├── 🗃️ models.py                # Modelos de base de datos SQLAlchemy
+│   ├── 📋 templates.py              # Sistema de templates dinámicos
+│   ├── 🛠️ utils.py                  # Utilidades y funciones auxiliares
+│   └── 📁 data/
+│       ├── 📁 cache/                # Caché de respuestas
+│       ├── 📁 chroma_db/            # Base de datos vectorial ChromaDB
+│       └── 📁 pdfs/                 # Documentos fuente (Syllabus CINF103)
+├── 📁 frontend/
+│   ├── 🌐 index.html                # Página principal del chat
+│   ├── 📁 pages/
+│   │   ├── 🔐 login.html            # Página de autenticación
+│   │   └── 📊 dashboard.html        # Panel de control y estadísticas
+│   └── 📁 assets/
+│       ├── 📁 css/
+│       │   ├── 💬 index.css         # Estilos del chat
+│       │   ├── 🔐 login.css         # Estilos del login
+│       │   └── 📊 dashboard.css     # Estilos del dashboard
+│       └── 📁 js/
+│           ├── 💬 chat.js           # Lógica del chat
+│           ├── 🔐 login.js          # Lógica del login
+│           └── 📊 dashboard.js      # Lógica del dashboard
+├── 🚀 startAPI.bat                  # Script de inicio rápido (Windows)
+├── 🔧 .env                          # Variables de entorno
+├── 📋 requirements.txt              # Dependencias Python
+└── 📖 README.md                     # Este archivo
+```
+
+## 📚 API Documentation
+
+Documentación interactiva disponible en:
+
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+
+### Endpoints Principales
+
+#### Autenticación
+- `POST /auth/register` - Registro de nuevos usuarios
+- `POST /auth/login` - Inicio de sesión
+- `POST /auth/logout` - Cerrar sesión
+
+#### Chat y Conversaciones
+- `POST /chat/message` - Enviar mensaje al chatbot
+- `GET /chat/history/{user_id}` - Obtener historial del usuario
+- `POST /chat/new-session` - Crear nueva sesión de chat
+
+#### Dashboard y Analytics
+- `GET /dashboard/stats/{user_id}` - Estadísticas del usuario
+- `GET /dashboard/feedback-summary` - Resumen de feedback
+
+#### Feedback
+- `POST /feedback` - Enviar calificación y comentarios
+
+## 🤝 Contribución
+
+¡Las contribuciones son bienvenidas! Sigue estos pasos:
+
+1. Fork el proyecto
+2. Crea una rama feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -m 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
+
+### Roadmap Futuro
+
+- [ ] 🔄 Sistema de caché inteligente para respuestas frecuentes
+- [ ] 📄 Soporte para documentos Word (.docx) y texto plano
+- [ ] 🌐 API REST pública con autenticación JWT
+- [ ] 🐳 Containerización con Docker
+- [ ] ☁️ Despliegue en la nube (AWS/GCP/Azure)
+- [ ] 📱 Aplicación móvil nativa
+- [ ] 🔍 Búsqueda avanzada con filtros temporales
+- [ ] 🎨 Temas personalizables para la interfaz
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detalles.
+
+---
+
+## 👥 Autores
+
+### **Creado por:**
+
+**🎓 Luis Marcano**  
+**🎓 Hakim Rabi**  
+**🎓 Luciano Aguilar**
+
+---
+
+### 🏛️ **Universidad Andrés Bello - Chile**
+### 📚 **Proyecto de Título - Ingeniería Civil Informática**
+
+---
+
+## 📞 Contacto y Enlaces
+
+**🔗 Proyecto**: [https://github.com/HakimRabi/chatbot-educativo](https://github.com/HakimRabi/chatbot-educativo)
+
+**🏫 Universidad**: [Universidad Andrés Bello](https://www.unab.cl/)
+
+---
+
+### 💡 Sobre el Proyecto
+
+*Este chatbot educativo representa la culminación de nuestro proyecto de título en Ingeniería Civil Informática. Desarrollado específicamente para el curso CINF103 de la Universidad Andrés Bello, demuestra la implementación práctica de sistemas RAG (Retrieval-Augmented Generation) y modelos de lenguaje locales en el ámbito educativo chileno.*
+
+*El sistema procesa el syllabus oficial del curso y otros materiales académicos para proporcionar asistencia inteligente a los estudiantes, manteniendo la privacidad de los datos mediante el uso de modelos locales a través de Ollama.*
+
+---
+
+### ⚡ Quick Start
+
+```bash
+# Instalación ultra-rápida
+git clone https://github.com/tu-usuario/chatbot-educativo.git
+cd chatbot-educativo
+
+# Setup automático
+python -m venv venv && venv\Scripts\activate
+pip install -r requirements.txt
+
+# Configurar variables de entorno (.env)
+# Configurar base de datos MySQL
+# Colocar syllabus en /backend/data/pdfs/
+
+# ¡Listo para usar!
+ollama serve
+startAPI.bat
+```
+
+**🚀 ¡Ya tienes tu asistente IA educativo funcionando!**
+
+---
+
+*Desarrollado con ❤️ para la comunidad educativa de la Universidad Andrés Bello*
+
+**© 2025 - Proyecto de Título UNAB - Ingeniería Civil Informática**
