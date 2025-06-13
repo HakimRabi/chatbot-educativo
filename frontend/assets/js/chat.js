@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Verificar si hay sesión activa
     const userId = localStorage.getItem('userId');
     const userName = localStorage.getItem('userName');
+    const userPermisos = localStorage.getItem('userPermisos');
     
     if (!userId || !userName) {
         // Si no hay sesión activa, redirigir al login
@@ -11,6 +12,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Mostrar nombre del usuario
     document.getElementById('user-name').textContent = `Usuario: ${userName}`;
+
+    // Verificar permisos y mostrar botón del dashboard si es admin
+    const dashboardButton = document.getElementById('dashboard-button');
+    console.log('Verificando permisos para dashboard:', userPermisos);
+    
+    if (userPermisos === 'admin') {
+        dashboardButton.style.display = 'inline-block';
+        console.log('Usuario admin detectado - mostrando botón dashboard');
+        
+        // Agregar evento para ir al dashboard
+        dashboardButton.addEventListener('click', () => {
+            console.log('Navegando al dashboard...');
+            window.location.href = 'pages/dashboard.html';
+        });
+    } else {
+        dashboardButton.style.display = 'none';
+        console.log('Usuario sin permisos de admin - ocultando botón dashboard');
+    }
 
     // Verificar conexión con el backend
     try {

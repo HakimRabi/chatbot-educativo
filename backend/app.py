@@ -61,6 +61,15 @@ def serve_index():
 def serve_index_direct():
     return FileResponse("../frontend/index.html")
 
+# Agregar ruta específica para el dashboard
+@app.get("/dashboard")
+def serve_dashboard():
+    return FileResponse("../frontend/pages/dashboard.html")
+
+@app.get("/pages/dashboard")
+def serve_dashboard_pages():
+    return FileResponse("../frontend/pages/dashboard.html")
+
 @app.on_event("startup")
 async def startup_event():
     """Evento que se ejecuta al iniciar el servidor"""
@@ -69,6 +78,14 @@ async def startup_event():
     logger.info("=" * 60)
     logger.info("🚀 INICIANDO CHATBOT EDUCATIVO")
     logger.info("=" * 60)
+    
+    # FIRST: Configure routes before anything else
+    logger.info("🔧 Configurando rutas del sistema...")
+    routes_success = setup_routes()
+    if routes_success:
+        logger.info("✅ Rutas configuradas exitosamente")
+    else:
+        logger.warning("⚠️ Problemas configurando algunas rutas")
     
     try:
         # Importar y crear instancia del sistema IA
@@ -496,12 +513,18 @@ async def login_basic(request: Request):
                 if not pwd_context.verify(password, user.password):
                     return {"success": False, "message": "Credenciales incorrectas"}
                 
+                # Asegurar que permisos tenga un valor por defecto
+                permisos = user.permisos if user.permisos is not None else 'usuario'
+                
+                logger.info(f"Login exitoso en app.py: {email}, permisos: {permisos}")
+                
                 return {
                     "success": True,
                     "user": {
                         "id": user.id,
                         "nombre": user.nombre,
-                        "email": user.email
+                        "email": user.email,
+                        "permisos": permisos  # Agregar permisos aquí
                     }
                 }
         except Exception as db_error:
@@ -513,7 +536,8 @@ async def login_basic(request: Request):
                     "user": {
                         "id": 5,
                         "nombre": "Usuario Test",
-                        "email": "test@test.com"
+                        "email": "test@test.com",
+                        "permisos": "usuario"  # Agregar permisos por defecto
                     }
                 }
             else:
@@ -548,6 +572,7 @@ async def register_basic(request: Request):
                     nombre=nombre,
                     email=email,
                     password=hashed_password,
+                    permisos='usuario',  # Asignar permisos por defecto
                     created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 )
                 db.add(new_user)
@@ -560,7 +585,8 @@ async def register_basic(request: Request):
                     "user": {
                         "id": new_user.id,
                         "nombre": new_user.nombre,
-                        "email": new_user.email
+                        "email": new_user.email,
+                        "permisos": new_user.permisos or 'usuario'  # Incluir permisos
                     }
                 }
         except Exception as db_error:
@@ -571,7 +597,8 @@ async def register_basic(request: Request):
                 "user": {
                     "id": 6,
                     "nombre": nombre,
-                    "email": email
+                    "email": email,
+                    "permisos": "usuario"  # Agregar permisos por defecto
                 }
             }
             
@@ -600,40 +627,192 @@ def setup_basic_routes():
 
 # Función para configurar las rutas después de que todo esté cargado
 def setup_routes():
-    """Configura las rutas de la aplicación de forma diferida"""
+    """Configura las rutas de la aplicación de forma diferida."""
+    logger.info("🔧 STARTING route configuration process...")
+    all_routes_configured_successfully = True
+
+    # Configure Auth Router
     try:
+        from auth import router as auth_router
+        app.include_router(auth_router, prefix="/auth", tags=["auth"])
+        logger.info("✅ Auth router configured and included successfully.")
+    except ImportError as e:
+        logger.error(f"❌ Failed to import auth_router: {e}")
+        all_routes_configured_successfully = False
+    except Exception as e:
+        logger.error(f"❌ Error configuring auth_router: {e}")
+        all_routes_configured_successfully = False
+
+    # Configure Chat Router
+    try:
+        from chat import router as chat_router
+        app.include_router(chat_router, prefix="/chat", tags=["chat"])
+        logger.info("✅ Chat router configured and included successfully.")
+        
+        # Compatibility routes from chat module
         try:
-            from auth import router as auth_router
-            from chat import router as chat_router
-            
-            # Quitar las rutas básicas de auth antes de agregar las del router
-            app.router.routes = [route for route in app.router.routes 
-                               if not (hasattr(route, 'path') and route.path.startswith('/auth/'))]
-            
-            app.include_router(auth_router, prefix="/auth", tags=["auth"])
-            app.include_router(chat_router, prefix="/chat", tags=["chat"])
-            
-            from chat import preguntar, generar_sugerencias
+            from chat import preguntar as chat_preguntar_func, generar_sugerencias as chat_sugerencias_func
             
             @app.post("/sugerencias_compat")
-            def generar_sugerencias_compat(solicitud):
-                return generar_sugerencias(solicitud)
-
-            @app.post("/preguntar_compat") 
-            def preguntar_compat(pregunta):
-                return preguntar(pregunta)
+            def generar_sugerencias_compat(solicitud: SolicitudSugerencias):
+                return chat_sugerencias_func(solicitud)
                 
-            logger.info("Rutas configuradas con módulos separados")
-            return True
-            
-        except ImportError as import_error:
-            logger.warning(f"No se pudieron importar módulos separados: {import_error}")
-            logger.info("Usando rutas básicas configuradas directamente en app.py")
-            return True
+            @app.post("/preguntar_compat") 
+            def preguntar_compat(pregunta_data: Pregunta):
+                return chat_preguntar_func(pregunta_data)
+            logger.info("✅ Chat compatibility routes configured.")
+        except ImportError as chat_funcs_error:
+            logger.warning(f"⚠️ Could not import chat functions for compatibility routes: {chat_funcs_error}")
+
+    except ImportError as e:
+        logger.error(f"❌ Failed to import chat_router: {e}")
+        all_routes_configured_successfully = False
+    except Exception as e:
+        logger.error(f"❌ Error configuring chat_router: {e}")
+        all_routes_configured_successfully = False
+
+    # Configure Dashboard Router - ENHANCED CRITICAL SECTION
+    dashboard_success = False
+    try:
+        logger.info("🔧 Attempting to import dashboard router...")
+        
+        # Force fresh import of dashboard module
+        import importlib
+        import sys
+        if 'dashboard' in sys.modules:
+            importlib.reload(sys.modules['dashboard'])
+        
+        from dashboard import router as dashboard_router
+        logger.info(f"✅ Successfully imported dashboard_router: {type(dashboard_router)}")
+        
+        # Detailed inspection of dashboard router
+        if dashboard_router is None:
+            logger.error("❌ CRITICAL: dashboard_router is None after import!")
+            raise ImportError("dashboard_router is None")
+        
+        if not hasattr(dashboard_router, 'routes'):
+            logger.error("❌ CRITICAL: dashboard_router missing 'routes' attribute!")
+            raise ImportError("dashboard_router missing routes")
+        
+        routes_count = len(dashboard_router.routes)
+        logger.info(f"📊 Dashboard router contains {routes_count} routes")
+        
+        if routes_count == 0:
+            logger.error("❌ CRITICAL: Dashboard router has 0 routes!")
+            raise ImportError("Dashboard router has no routes")
+        
+        # Log each route in detail
+        for idx, route in enumerate(dashboard_router.routes):
+            if hasattr(route, 'path') and hasattr(route, 'methods'):
+                methods = ', '.join(route.methods)
+                logger.info(f"  📋 Route [{idx}]: {methods} {route.path}")
+            else:
+                logger.info(f"  📋 Route [{idx}]: {type(route)} - path: {getattr(route, 'path', 'MISSING')}")
+        
+        # Include dashboard router with enhanced logging
+        logger.info("🔧 Including dashboard router in main FastAPI app...")
+        
+        # Count routes before inclusion
+        routes_before = len(app.routes)
+        dashboard_routes_before = len([r for r in app.routes if hasattr(r, 'path') and r.path.startswith('/dashboard')])
+        
+        logger.info(f"📊 App routes before dashboard inclusion: {routes_before} (dashboard: {dashboard_routes_before})")
+        
+        # Include the router
+        app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
+        
+        # Count routes after inclusion
+        routes_after = len(app.routes)
+        dashboard_routes_after = len([r for r in app.routes if hasattr(r, 'path') and r.path.startswith('/dashboard')])
+        
+        logger.info(f"📊 App routes after dashboard inclusion: {routes_after} (dashboard: {dashboard_routes_after})")
+        logger.info(f"📊 Routes added: {routes_after - routes_before}")
+        
+        if dashboard_routes_after == 0:
+            logger.error("❌ CRITICAL: No dashboard routes found on app after inclusion!")
+            raise Exception("Dashboard routes not registered on app")
+        elif dashboard_routes_after != routes_count:
+            logger.warning(f"⚠️ Route count mismatch: expected {routes_count}, got {dashboard_routes_after}")
+        else:
+            logger.info("✅ Dashboard routes successfully registered!")
+            dashboard_success = True
+        
+        # Verify specific routes exist
+        dashboard_routes = [r for r in app.routes if hasattr(r, 'path') and r.path.startswith('/dashboard')]
+        for route in dashboard_routes:
+            if hasattr(route, 'methods') and hasattr(route, 'path'):
+                methods = ', '.join(route.methods)
+                logger.info(f"  ✅ VERIFIED: {methods} {route.path}")
+        
+        if not dashboard_success:
+            logger.error("❌ Dashboard router inclusion verification failed")
+            all_routes_configured_successfully = False
+        
+    except ImportError as e:
+        logger.error(f"❌ FAILED to import dashboard module: {e}")
+        all_routes_configured_successfully = False
+        # Try fallback manual route registration
+        logger.info("🔧 Attempting fallback dashboard route registration...")
+        try:
+            register_dashboard_routes_fallback()
+            logger.info("✅ Fallback dashboard routes registered")
+        except Exception as fallback_error:
+            logger.error(f"❌ Fallback route registration failed: {fallback_error}")
             
     except Exception as e:
-        logger.error(f"Error configurando rutas: {e}")
-        return True
+        logger.error(f"❌ Unexpected error configuring dashboard: {e}", exc_info=True)
+        all_routes_configured_successfully = False
+
+    # Final comprehensive verification
+    total_routes = len(app.routes)
+    dashboard_final_count = len([r for r in app.routes if hasattr(r, 'path') and r.path.startswith('/dashboard')])
+    auth_routes = len([r for r in app.routes if hasattr(r, 'path') and r.path.startswith('/auth')])
+    chat_routes = len([r for r in app.routes if hasattr(r, 'path') and r.path.startswith('/chat')])
+    
+    logger.info("=" * 50)
+    logger.info("📋 FINAL ROUTE CONFIGURATION SUMMARY:")
+    logger.info(f"  📊 Total routes: {total_routes}")
+    logger.info(f"  🔐 Auth routes: {auth_routes}")
+    logger.info(f"  💬 Chat routes: {chat_routes}")
+    logger.info(f"  📊 Dashboard routes: {dashboard_final_count}")
+    logger.info("=" * 50)
+    
+    if all_routes_configured_successfully and dashboard_final_count > 0:
+        logger.info("✅ Route configuration completed successfully!")
+    else:
+        logger.warning("⚠️ Route configuration completed with issues!")
+        
+    return all_routes_configured_successfully
+
+def register_dashboard_routes_fallback():
+    """Fallback function to manually register dashboard routes if router inclusion fails"""
+    logger.info("🔧 Registering dashboard routes manually as fallback...")
+    
+    # Import dashboard functions directly
+    try:
+        from dashboard import (
+            get_dashboard_stats, get_user_sessions_stats, get_feedback_analysis,
+            get_dashboard_users, get_system_health, get_dashboard_analytics,
+            check_dashboard_access
+        )
+        
+        # Register routes manually
+        app.add_api_route("/dashboard/stats", get_dashboard_stats, methods=["GET"], tags=["dashboard"])
+        app.add_api_route("/dashboard/user-sessions", get_user_sessions_stats, methods=["GET"], tags=["dashboard"])
+        app.add_api_route("/dashboard/feedback-analysis", get_feedback_analysis, methods=["GET"], tags=["dashboard"])
+        app.add_api_route("/dashboard/users", get_dashboard_users, methods=["GET"], tags=["dashboard"])
+        app.add_api_route("/dashboard/system-health", get_system_health, methods=["GET"], tags=["dashboard"])
+        app.add_api_route("/dashboard/analytics", get_dashboard_analytics, methods=["GET"], tags=["dashboard"])
+        app.add_api_route("/dashboard/check-access", check_dashboard_access, methods=["GET"], tags=["dashboard"])
+        
+        logger.info("✅ Fallback dashboard routes registered successfully")
+        
+    except ImportError as e:
+        logger.error(f"❌ Failed to import dashboard functions for fallback: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to register fallback dashboard routes: {e}")
+        raise
 
 # Función para obtener información del sistema IA
 def get_ai_system_info():
@@ -698,10 +877,26 @@ if __name__ == "__main__":
     if routes_configured:
         print("✅ Rutas configuradas correctamente")
         print("📑 Rutas disponibles:")
+        dashboard_count = 0
         for route in app.routes:
             if hasattr(route, 'methods') and hasattr(route, 'path'):
                 methods = ', '.join(route.methods)
                 print(f"  {methods}: {route.path}")
+                if route.path.startswith('/dashboard'):
+                    dashboard_count += 1
+        
+        print(f"📊 Total de rutas del dashboard registradas: {dashboard_count}")
+        
+        if dashboard_count == 0:
+            print("⚠️ No se encontraron rutas del dashboard registradas")
+            print("🔄 Intentando importar dashboard manualmente...")
+            try:
+                import dashboard
+                print("✅ Dashboard importado exitosamente")
+            except Exception as e:
+                print(f"❌ Error importando dashboard: {e}")
+        else:
+            print("✅ Dashboard endpoints loaded successfully")
     else:
         print("⚠️ Algunas rutas no se pudieron configurar")
     

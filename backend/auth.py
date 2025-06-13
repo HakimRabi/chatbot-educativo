@@ -60,7 +60,7 @@ async def register_user(request: Request):
 async def login_user(request: Request):
     try:
         data = await request.json()
-        logger.info(f"Datos de login recibidos para email: {data.get('email', 'N/A')}")
+        logger.info(f"Datos de login recibidos: {data}")
         
         email = data.get("email")
         password = data.get("password")
@@ -81,14 +81,20 @@ async def login_user(request: Request):
                     logger.warning(f"Contraseña incorrecta para: {email}")
                     return {"success": False, "message": "Credenciales incorrectas"}
                 
-                logger.info(f"Login exitoso: {email}")
+                # Log user permissions for debugging
+                logger.info(f"Usuario encontrado: {user.email}, permisos: {user.permisos}")
+                
+                # Ensure permisos has a default value
+                permisos = user.permisos if user.permisos is not None else 'usuario'
+                
+                logger.info(f"Login exitoso: {email}, permisos asignados: {permisos}")
                 return {
                     "success": True,
-                    "message": "Login exitoso",
                     "user": {
                         "id": user.id,
                         "nombre": user.nombre,
-                        "email": user.email
+                        "email": user.email,
+                        "permisos": permisos
                     }
                 }
             except Exception as e:

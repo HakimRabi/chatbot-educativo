@@ -2,6 +2,7 @@ import os
 import re
 import logging
 import sys
+import time
 import traceback
 from glob import glob
 from datetime import datetime
@@ -32,6 +33,7 @@ class AISystem:
         self.chroma_error_details = None
         self.faiss_error_details = None
         self.is_initialized = False
+        self.data_dir = os.path.dirname(CHROMA_PATH) if CHROMA_PATH else "data"
         
         # No inicializar automáticamente, se hará desde el servidor
     
@@ -59,6 +61,203 @@ class AISystem:
             return False
         except Exception as e:
             logger.error(f"ChromaDB dependency check failed: {e}")
+            return False
+
+    def setup_chroma_vectorstore(self, documents, embeddings, persist_directory):
+        """Configura ChromaDB con reutilización inteligente de persistencia"""
+        try:
+            import chromadb
+            from langchain_chroma import Chroma
+            
+            logger.info(f"🔍 Configurando ChromaDB en: {persist_directory}")
+            
+            # Crear directorio si no existe
+            os.makedirs(persist_directory, exist_ok=True)
+            
+            # Verificar si existe una base de datos persistida
+            try:
+                client = chromadb.PersistentClient(path=persist_directory)
+                collection_name = "langchain"
+                
+                # API actualizada para ChromaDB v0.6.0+
+                try:
+                    # Intentar obtener la colección directamente
+                    collection = client.get_collection(collection_name)
+                    doc_count = collection.count()
+                    
+                    if doc_count > 0 and doc_count >= len(documents):
+                        logger.info(f"🔄 Reutilizando ChromaDB existente con {doc_count} documentos")
+                        
+                        # Cargar vector store existente SIN recrear
+                        vector_store = Chroma(
+                            client=client,
+                            collection_name=collection_name,
+                            embedding_function=embeddings,
+                            persist_directory=persist_directory
+                        )
+                        
+                        logger.info("✅ ChromaDB cargado desde persistencia - ¡Inicio rápido!")
+                        return vector_store
+                        
+                    elif doc_count > 0 and doc_count < len(documents):
+                        logger.info(f"📄 Base existente ({doc_count} docs) vs nuevos ({len(documents)} docs)")
+                        logger.info("🔄 Actualizando base de datos...")
+                        
+                        # Cargar existente y agregar documentos faltantes
+                        vector_store = Chroma(
+                            client=client,
+                            collection_name=collection_name,
+                            embedding_function=embeddings,
+                            persist_directory=persist_directory
+                        )
+                        
+                        # Agregar documentos nuevos
+                        new_docs = documents[doc_count:]
+                        if new_docs:
+                            vector_store.add_documents(new_docs)
+                            logger.info(f"➕ Agregados {len(new_docs)} documentos nuevos")
+                        
+                        return vector_store
+                    else:
+                        logger.info("📋 Colección vacía, recreando...")
+                        
+                except ValueError as ve:
+                    # La colección no existe
+                    if "does not exist" in str(ve) or "Collection" in str(ve):
+                        logger.info("📋 No existe colección previa, creando nueva...")
+                    else:
+                        raise ve
+                        
+            except Exception as e:
+                # Si hay error de corrupted database, limpiarla
+                if "_type" in str(e) or "corrupted" in str(e).lower():
+                    logger.warning(f"🗑️ Base de datos corrupta detectada: {e}")
+                    logger.info("🧹 Limpiando base de datos corrupta...")
+                    
+                    try:
+                        import shutil
+                        if os.path.exists(persist_directory):
+                            # Hacer backup por seguridad
+                            backup_path = f"{persist_directory}_backup_{int(datetime.now().timestamp())}"
+                            shutil.move(persist_directory, backup_path)
+                            logger.info(f"📁 Backup creado en: {backup_path}")
+                            
+                            # Recrear directorio limpio
+                            os.makedirs(persist_directory, exist_ok=True)
+                            logger.info("✅ Directorio ChromaDB limpiado")
+                        
+                    except Exception as cleanup_error:
+                        logger.error(f"❌ Error limpiando DB: {cleanup_error}")
+                else:
+                    logger.warning(f"⚠️ Error verificando base existente: {e}")
+                
+                logger.info("🔄 Creando nueva base de datos...")
+            
+            # Crear nueva base de datos
+            logger.info("🔧 Creando nuevo vector store con ChromaDB...")
+            
+            vector_store = Chroma.from_documents(
+                documents=documents,
+                embedding=embeddings,
+                persist_directory=persist_directory,
+                collection_name=collection_name
+            )
+            
+            logger.info(f"💾 ChromaDB creado con {len(documents)} documentos")
+            return vector_store
+            
+        except Exception as e:
+            logger.error(f"❌ Error configurando ChromaDB: {e}")
+            raise
+
+    def setup_vector_database(self):
+        """Configura la base de datos vectorial con optimización de persistencia"""
+        try:
+            logger.info("🔍 Configurando base de datos vectorial...")
+            
+            if not self.fragmentos:
+                logger.warning("⚠️ No hay fragmentos disponibles")
+                return False
+            
+            # Configurar embeddings
+            embeddings = OllamaEmbeddings(model="nomic-embed-text")
+            
+            # Configurar ChromaDB con persistencia optimizada
+            chroma_path = os.path.join(self.data_dir, "chroma_db")
+            
+            # Verificar si existe base de datos previa
+            if os.path.exists(chroma_path):
+                chroma_files = [f for f in os.listdir(chroma_path) if not f.startswith('.')]
+                if chroma_files:
+                    logger.info(f"📁 Base de datos ChromaDB existente encontrada ({len(chroma_files)} archivos)")
+                    
+                    try:
+                        # Intentar cargar base existente
+                        start_time = time.time()
+                        vector_store = self.setup_chroma_vectorstore(
+                            self.fragmentos, embeddings, chroma_path
+                        )
+                        
+                        load_time = time.time() - start_time
+                        logger.info(f"⚡ Base de datos cargada en {load_time:.2f} segundos")
+                        
+                        self.vector_store = vector_store
+                        self.using_chroma = True
+                        self.using_vector_db = True
+                        
+                        logger.info("🎉 ChromaDB inicializado con persistencia")
+                        return True
+                        
+                    except Exception as load_error:
+                        logger.warning(f"⚠️ Error cargando base existente: {load_error}")
+                        logger.info("🔄 Recreando base de datos...")
+            
+            # Crear nueva base de datos si no existe o falló la carga
+            logger.info("🔧 Creando nueva base de datos ChromaDB...")
+            start_time = time.time()
+            
+            vector_store = self.setup_chroma_vectorstore(
+                self.fragmentos, embeddings, chroma_path
+            )
+            
+            creation_time = time.time() - start_time
+            logger.info(f"⚡ Base de datos creada en {creation_time:.2f} segundos")
+            
+            self.vector_store = vector_store
+            self.using_chroma = True
+            self.using_vector_db = True
+            
+            logger.info("🎉 ChromaDB creado exitosamente")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Error en setup_vector_database: {e}")
+            # Continuar con fallback a FAISS si es necesario
+            return self.setup_faiss_fallback(embeddings)
+
+    def setup_faiss_fallback(self, embeddings):
+        """Configura FAISS como fallback si ChromaDB falla"""
+        try:
+            logger.info("🔄 Configurando FAISS como fallback...")
+            os.makedirs(FAISS_PATH, exist_ok=True)
+            
+            self.vector_store = FAISS.from_documents(documents=self.fragmentos, embedding=embeddings)
+            self.vector_store.save_local(FAISS_PATH)
+            
+            self.using_chroma = False
+            self.using_vector_db = True
+            logger.info("✅ FAISS configurado como fallback")
+            return True
+            
+        except Exception as faiss_error:
+            self.faiss_error_details = {
+                "error": str(faiss_error),
+                "type": type(faiss_error).__name__,
+                "traceback": traceback.format_exc()
+            }
+            logger.error(f"❌ Error configurando FAISS: {faiss_error}")
+            self.vector_store = None
+            self.using_vector_db = False
             return False
     
     def get_error_diagnostics(self):
@@ -188,152 +387,23 @@ class AISystem:
             # Inicializar embeddings y LLM
             logger.info("🧠 Inicializando modelo de lenguaje...")
             try:
-                embeddings = OllamaEmbeddings(model=MODEL_NAME)
+                embeddings = OllamaEmbeddings(model="nomic-embed-text")
                 self.llm = OllamaLLM(model=MODEL_NAME, temperature=MODEL_TEMPERATURE)
                 logger.info("✅ Embeddings y LLM inicializados correctamente")
             except Exception as e:
                 logger.error(f"❌ Error inicializando Ollama: {e}")
                 raise
             
-            # Intentar configurar ChromaDB con diagnósticos detallados
+            # Configurar base de datos vectorial con optimización
             if chromadb_available and self.fragmentos:
-                chroma_attempts = 0
-                max_attempts = 2
-                
-                while chroma_attempts < max_attempts:
-                    try:
-                        logger.info(f"🔍 Intento {chroma_attempts + 1}: Configurando ChromaDB en: {CHROMA_PATH}")
-                        
-                        # Verificar permisos del directorio
-                        os.makedirs(CHROMA_PATH, exist_ok=True)
-                        test_file = os.path.join(CHROMA_PATH, "test_write.txt")
-                        try:
-                            with open(test_file, 'w') as f:
-                                f.write("test")
-                            os.remove(test_file)
-                            logger.info("✅ Permisos de escritura verificados")
-                        except Exception as perm_error:
-                            logger.error(f"❌ No se puede escribir en {CHROMA_PATH}: {perm_error}")
-                            raise
-                        
-                        # Verificar espacio en disco
-                        import shutil
-                        total, used, free = shutil.disk_usage(CHROMA_PATH)
-                        logger.info(f"💾 Espacio libre en disco: {free // (1024**3)} GB")
-                        
-                        if free < 100 * 1024 * 1024:  # Menos de 100MB
-                            logger.warning("⚠️ Poco espacio libre en disco")
-                        
-                        # Intentar crear ChromaDB con configuración específica
-                        logger.info("🔧 Creando vector store con ChromaDB...")
-                        
-                        # Usar un nombre de colección único para evitar conflictos
-                        collection_name = f"chatbot_docs_{int(datetime.now().timestamp())}"
-                        
-                        self.vector_store = Chroma.from_documents(
-                            documents=self.fragmentos,
-                            embedding=embeddings,
-                            persist_directory=CHROMA_PATH,
-                            collection_name=collection_name
-                        )
-                        
-                        logger.info("💾 Persistiendo ChromaDB...")
-                        try:
-                            self.vector_store.persist()
-                        except:
-                            # Ignorar errores de persist en versiones nuevas
-                            pass
-                        
-                        # Verificar que se creó correctamente
-                        collection_count = self.vector_store._collection.count()
-                        logger.info(f"✅ ChromaDB creado con {collection_count} documentos")
-                        
-                        self.using_chroma = True
-                        self.using_vector_db = True
-                        logger.info("🎉 ChromaDB inicializado correctamente")
-                        break  # Salir del bucle si fue exitoso
-                        
-                    except Exception as chroma_error:
-                        chroma_attempts += 1
-                        self.chroma_error_details = {
-                            "error": str(chroma_error),
-                            "type": type(chroma_error).__name__,
-                            "traceback": traceback.format_exc(),
-                            "attempt": chroma_attempts
-                        }
-                        
-                        logger.error(f"❌ Error con ChromaDB (intento {chroma_attempts}):")
-                        logger.error(f"  Tipo: {type(chroma_error).__name__}")
-                        logger.error(f"  Mensaje: {chroma_error}")
-                        
-                        # Si es el error específico de '_type', intentar reparar
-                        if "KeyError: '_type'" in str(chroma_error) and chroma_attempts < max_attempts:
-                            logger.info("🔧 Detectado error de configuración corrupta, intentando reparar...")
-                            if self.fix_chromadb_config():
-                                logger.info("✅ Configuración reparada, reintentando...")
-                                continue
-                        
-                        # Si es el último intento, usar FAISS
-                        if chroma_attempts >= max_attempts:
-                            logger.error(f"❌ Traceback completo:\n{traceback.format_exc()}")
-                            break
-                
-                # Si ChromaDB falló, usar FAISS
-                if not self.using_chroma:
-                    try:
-                        logger.info("🔄 Intentando fallback a FAISS...")
-                        os.makedirs(FAISS_PATH, exist_ok=True)
-                        
-                        logger.info("🔧 Creando vector store con FAISS...")
-                        self.vector_store = FAISS.from_documents(documents=self.fragmentos, embedding=embeddings)
-                        
-                        logger.info("💾 Guardando FAISS...")
-                        self.vector_store.save_local(FAISS_PATH)
-                        
-                        self.using_chroma = False
-                        self.using_vector_db = True
-                        logger.info("✅ FAISS inicializado como fallback")
-                        
-                    except Exception as faiss_error:
-                        self.faiss_error_details = {
-                            "error": str(faiss_error),
-                            "type": type(faiss_error).__name__,
-                            "traceback": traceback.format_exc()
-                        }
-                        logger.error(f"❌ Error con FAISS fallback:")
-                        logger.error(f"  Tipo: {type(faiss_error).__name__}")
-                        logger.error(f"  Mensaje: {faiss_error}")
-                        
-                        self.vector_store = None
-                        self.using_vector_db = False
+                success = self.setup_vector_database()
+                if not success:
+                    logger.warning("⚠️ Falló configuración vectorial, usando modo básico")
             else:
                 if not chromadb_available:
-                    logger.warning("⚠️ ChromaDB no disponible, usando FAISS...")
+                    logger.warning("⚠️ ChromaDB no disponible")
                 elif not self.fragmentos:
                     logger.warning("⚠️ No hay fragmentos para procesar")
-                
-                # Intentar FAISS directamente
-                if self.fragmentos:
-                    try:
-                        logger.info("🔧 Configurando FAISS directamente...")
-                        os.makedirs(FAISS_PATH, exist_ok=True)
-                        
-                        self.vector_store = FAISS.from_documents(documents=self.fragmentos, embedding=embeddings)
-                        self.vector_store.save_local(FAISS_PATH)
-                        
-                        self.using_chroma = False
-                        self.using_vector_db = True
-                        logger.info("✅ FAISS configurado directamente")
-                        
-                    except Exception as faiss_error:
-                        self.faiss_error_details = {
-                            "error": str(faiss_error),
-                            "type": type(faiss_error).__name__,
-                            "traceback": traceback.format_exc()
-                        }
-                        logger.error(f"❌ Error configurando FAISS: {faiss_error}")
-                        self.vector_store = None
-                        self.using_vector_db = False
             
             # Configurar cadena de recuperación
             if self.vector_store is not None:

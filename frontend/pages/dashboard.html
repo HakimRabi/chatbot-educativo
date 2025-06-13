@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - ChatBot IA UNAB</title>
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-robot"></i>
+                    <h2>IA UNAB</h2>
+                </div>
+                <h6>v0.4.6</h6>
+            </div>
+            
+            <div class="sidebar-menu">
+                <a href="#overview" class="menu-item active" data-section="overview">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Resumen</span>
+                </a>
+                <a href="#feedback" class="menu-item" data-section="feedback">
+                    <i class="fas fa-comments"></i>
+                    <span>Feedback</span>
+                </a>
+                <a href="#users" class="menu-item" data-section="users">
+                    <i class="fas fa-users"></i>
+                    <span>Usuarios</span>
+                </a>
+                <a href="#system" class="menu-item" data-section="system">
+                    <i class="fas fa-server"></i>
+                    <span>Sistema</span>
+                </a>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name" id="userName">Administrador</span>
+                        <span class="user-role">Admin</span>
+                    </div>
+                </div>
+                <div class="footer-actions">
+                    <a href="../index.html" class="btn-chatbot" title="Ir al Chatbot">
+                        <i class="fas fa-comment-dots"></i>
+                    </a>
+                    <button class="btn-settings" title="Configuración">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="btn-logout" id="logoutBtn" title="Cerrar sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1 id="sectionTitle">Resumen del Sistema</h1>
+                <div class="header-actions">
+                    <button class="btn-refresh" id="refreshBtn" title="Actualizar">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="last-update">
+                        Última actualización: <span id="lastUpdate">--</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Overview Section -->
+            <section id="overview-section" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalUsers">--</h3>
+                            <p>Usuarios Totales</p>
+                        </div>
+                        <div class="stat-trend positive">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalSessions">--</h3>
+                            <p>Sesiones (30d)</p>
+                        </div>
+                        <div class="stat-trend positive">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="avgRating">--</h3>
+                            <p>Rating Promedio</p>
+                        </div>
+                        <div class="stat-trend positive">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon system-status" id="systemStatusIcon">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="systemStatus">--</h3>
+                            <p>Estado del Sistema</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Sesiones Diarias</h3>
+                        <div class="chart-container">
+                            <canvas id="sessionsChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <h3>Análisis de Feedback</h3>
+                        <div id="feedbackAnalysis" class="analysis-content">
+                            <div class="loading">Cargando análisis...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="feedback-section" class="content-section">
+                <div class="section-controls">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="feedbackSearch" placeholder="Buscar por usuario, pregunta...">
+                    </div>
+                    <select id="ratingFilter">
+                        <option value="">Todos los ratings</option>
+                        <option value="5">5 estrellas</option>
+                        <option value="4">4 estrellas</option>
+                        <option value="3">3 estrellas</option>
+                        <option value="2">2 estrellas</option>
+                        <option value="1">1 estrella</option>
+                    </select>
+                </div>
+
+                <div class="feedback-table-container">
+                    <table class="feedback-table">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Pregunta</th>
+                                <th>Rating</th>
+                                <th>Comentario</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="feedbackTableBody">
+                            <tr>
+                                <td colspan="6" class="loading">Cargando feedback...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        <span id="feedbackPageInfo">Mostrando 0 de 0 evaluaciones</span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button id="feedbackPrevPage" class="pagination-btn" disabled>
+                            <i class="fas fa-chevron-left"></i> Anterior
+                        </button>
+                        <span id="feedbackPageNumbers" class="page-numbers"></span>
+                        <button id="feedbackNextPage" class="pagination-btn" disabled>
+                            Siguiente <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="improvement-suggestions">
+                    <h3>
+                        Sugerencias de Mejora
+                        <button id="loadSuggestionsBtn" class="btn-refresh" style="margin-left: 15px; transform: none;" title="Generar Sugerencias">
+                            <i class="fas fa-lightbulb"></i> Generar
+                        </button>
+                    </h3>
+                    <div id="improvementSuggestions" class="suggestions-content">
+                        <div class="text-center">Haz clic en "Generar" para analizar el feedback y obtener sugerencias.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Section -->
+            <section id="users-section" class="content-section">
+                <!-- Las estadísticas se insertarán dinámicamente aquí -->
+                
+                <!-- Controles de búsqueda y filtros -->
+                <div class="section-controls">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="usersSearch" placeholder="Buscar por nombre, email...">
+                    </div>
+                    <select id="statusFilter">
+                        <option value="">Todos los estados</option>
+                        <option value="activo">Activos</option>
+                        <option value="inactivo">Inactivos</option>
+                    </select>
+                    <select id="activityFilter">
+                        <option value="">Toda la actividad</option>
+                        <option value="high">Alta actividad (5+ sesiones)</option>
+                        <option value="medium">Actividad media (2-4 sesiones)</option>
+                        <option value="low">Baja actividad (1 sesión)</option>
+                        <option value="none">Sin actividad</option>
+                    </select>
+                </div>
+
+                <!-- Tabla de usuarios -->
+                <div class="feedback-table-container">
+                    <table class="feedback-table users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuario</th>
+                                <th>Email</th>
+                                <th>Permisos</th>
+                                <th>Fecha Registro</th>
+                                <th>Sesiones</th>
+                                <th>Evaluaciones</th>
+                                <th>Rating</th>
+                                <th>Estado</th>
+                                <th>Última Actividad</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr>
+                                <td colspan="11" class="loading">Cargando usuarios...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        <span id="usersPageInfo">Mostrando 0 de 0 usuarios</span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button id="usersPrevPage" class="pagination-btn" disabled>
+                            <i class="fas fa-chevron-left"></i> Anterior
+                        </button>
+                        <span id="usersPageNumbers" class="page-numbers"></span>
+                        <button id="usersNextPage" class="pagination-btn" disabled>
+                            Siguiente <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal para acciones de usuario -->
+                <div id="userActionModal" class="modal">
+                    <div class="modal-content">
+                        <span class="close" id="closeUserModal">&times;</span>
+                        <h2>Acciones de Usuario</h2>
+                        <div id="userActionDetails"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Section -->
+            <section id="system-section" class="content-section">
+                <div class="system-grid">
+                    <div class="health-card">
+                        <h3>Estado de Componentes Críticos</h3>
+                        <div class="health-indicators">
+                            <div class="health-item">
+                                <span class="health-label">Base de Datos</span>
+                                <div class="health-status" id="dbHealth">
+                                    <i class="fas fa-circle"></i>
+                                    <span>Verificando...</span>
+                                </div>
+                            </div>
+                            <div class="health-item">
+                                <span class="health-label">Modelo Ollama</span>
+                                <div class="health-status" id="ollamaHealth">
+                                    <i class="fas fa-circle"></i>
+                                    <span>Verificando...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="system-info-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #e83e8c, #f093fb);">
+                                <i class="fas fa-puzzle-piece"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="totalFragments">--</h3>
+                                <p>Fragmentos Cargados</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #fd7e14, #ffc107);">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="pdfFiles">--</h3>
+                                <p>Archivos PDF</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #17a2b8, #54d8e8);">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span id="vectorStoreStatus" class="status inactive">--</span>
+                                <p>Vector Store</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: linear-gradient(135deg, #20c997, #7bdcb5);">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <p id="lastHealthCheck" style="font-size: 1.2rem; font-weight: 600;">--</p>
+                                <p>Última Verificación</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Agregar sección de estado general del sistema -->
+                    <div class="health-card">
+                        <h3>Estado General del Sistema</h3>
+                        <div class="health-indicators">
+                            <div class="health-item">
+                                <span class="health-label">Estado General</span>
+                                <div class="health-status" id="overallSystemStatus">
+                                    <i class="fas fa-circle"></i>
+                                    <span>Verificando...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+        </main>
+    </div>
+
+    <!-- Modal para detalles de feedback -->
+    <div id="feedbackModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeFeedbackModal">&times;</span>
+            <h2>Detalles del Feedback</h2>
+            <div id="feedbackDetails">
+                </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeSettingsModal">&times;</span>
+            <h2>Configuración</h2>
+
+            <div class="settings-section">
+                <h3>Apariencia del Dashboard</h3>
+                
+                <div class="setting-item">
+                    <label for="darkModeToggle">Modo Oscuro</label>
+                    <label class="switch">
+                        <input type="checkbox" id="darkModeToggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item">
+                    <label>Color de Acento</label>
+                    <div class="color-swatches">
+                        <div class="color-swatch active" data-color="blue" style="background: #007bff;"></div>
+                        <div class="color-swatch" data-color="green" style="background: #28a745;"></div>
+                        <div class="color-swatch" data-color="purple" style="background: #6f42c1;"></div>
+                        <div class="color-swatch" data-color="orange" style="background: #fd7e14;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/dashboard.js"></script>
+</body>
+</html>

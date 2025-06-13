@@ -1,6 +1,13 @@
 {
-  "created_at": "2025-06-11T18:02:11.748012",
+  "created_at": "2025-06-13T14:04:07.331818",
   "pdf_files": [
+    {
+      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\06_Clustering.pdf",
+      "hash": "dad45ab793726074a3d1e0647115b4150f124442a8cea9bc4b2d2cea49e1080b",
+      "size": 2508857,
+      "mtime": 1747944613.7116385,
+      "name": "06_Clustering.pdf"
+    },
     {
       "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\SYLLABUS.pdf",
       "hash": "8c7a70ad3b1c3fc64cf4550f8a88e667e7818735b2b031ac202827c37b357179",
@@ -9,6 +16,6 @@
       "name": "SYLLABUS.pdf"
     }
   ],
-  "total_fragments": 15,
+  "total_fragments": 27,
   "cache_version": "1.0"
 }

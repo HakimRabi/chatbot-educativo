@@ -22,6 +22,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True)
     password = Column(String(100))
     created_at = Column(String(100))
+    permisos = Column(String(10), nullable=False, default='usuario')
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"

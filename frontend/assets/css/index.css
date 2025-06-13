@@ -144,9 +144,20 @@ body {
 .session-controls {
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
-#new-session-button, #history-button {
+.session-controls .left-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.session-controls .right-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+#new-session-button, #history-button, #dashboard-button {
     padding: 8px 15px;
     background-color: #4CAF50;
     color: white;
@@ -154,10 +165,12 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-#new-session-button:hover, #history-button:hover {
+#new-session-button:hover, #history-button:hover, #dashboard-button:hover {
     background-color: #388E3C;
+    transform: translateY(-1px);
 }
 
 #history-button {
@@ -166,6 +179,33 @@ body {
 
 #history-button:hover {
     background-color: #F57C00;
+}
+
+#dashboard-button {
+    background-color: #9C27B0;
+}
+
+#dashboard-button:hover {
+    background-color: #7B1FA2;
+}
+
+/* Estilos responsive para los botones */
+@media (max-width: 768px) {
+    .session-controls {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .session-controls .left-buttons,
+    .session-controls .right-buttons {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    #new-session-button, #history-button, #dashboard-button {
+        flex: 1;
+        min-width: 120px;
+    }
 }
 
 /* Modal styles */

@@ -107,21 +107,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (response.ok && data.success) {
                 console.log('Login exitoso:', data);
+                console.log('Datos del usuario:', data.user);
+                console.log('Permisos del usuario:', data.user.permisos);
+                
+                // Verificar y asignar permisos con valor por defecto
+                const userPermisos = data.user.permisos || 'usuario';
+                console.log('Permisos asignados:', userPermisos);
                 
                 // Guardar información de sesión
                 localStorage.setItem('userId', data.user.id);
                 localStorage.setItem('userName', data.user.nombre);
                 localStorage.setItem('userEmail', data.user.email);
+                localStorage.setItem('userPermisos', userPermisos);
+                
+                // Verificar que se guardó correctamente
+                console.log('Permisos guardados en localStorage:', localStorage.getItem('userPermisos'));
                 
                 Swal.fire({
                     icon: 'success',
                     title: '¡Bienvenido!',
-                    text: `Hola ${data.user.nombre}, has iniciado sesión correctamente.`,
+                    text: `Hola ${data.user.nombre}, has iniciado sesión correctamente como ${userPermisos}`,
                     timer: 2000,
                     showConfirmButton: false
                 }).then(() => {
-                    // Redirigir al chat usando URL completa
-                    window.location.replace(window.location.origin + '/index.html');
+                    // Redirigir según permisos
+                    console.log('Redirigiendo según permisos:', userPermisos);
+                    if (userPermisos === 'admin') {
+                        console.log('Redirigiendo a dashboard de admin');
+                        window.location.href = '../pages/dashboard.html';
+                    } else {
+                        console.log('Redirigiendo a chat principal');
+                        window.location.href = '/index.html';
+                    }
                 });
             } else {
                 console.error('Error en login:', data);
