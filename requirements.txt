@@ -1,0 +1,37 @@
+# Core dependencies for LangChain and Ollama
+langchain==0.1.20
+langchain-ollama==0.1.0
+langchain-community==0.0.38
+langchain-chroma==0.1.0
+
+# Vector databases
+chromadb==0.4.24
+faiss-cpu==1.7.4
+
+# Document processing
+pypdf==3.17.4
+
+# Text processing and embeddings
+sentence-transformers==2.2.2
+transformers==4.36.2
+
+# Utilities and system
+python-dotenv==1.0.0
+requests==2.31.0
+numpy==1.24.3
+pandas==2.0.3
+
+# Logging and debugging
+colorlog==6.8.0
+
+# Optional dependencies for better performance
+torch==2.1.2
+tokenizers==0.15.0
+
+# System dependencies
+sqlite3-binary==0.5.2
+pysqlite3==0.5.2
+
+# Development and testing (optional)
+pytest==7.4.4
+pytest-asyncio==0.21.1
