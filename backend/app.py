@@ -606,24 +606,121 @@ async def register_basic(request: Request):
         logger.error(f"Error en register_basic: {e}")
         return {"success": False, "message": "Error en registro"}
 
-# Endpoint básico de sugerencias
+# Endpoint básico de sugerencias - OPTIMIZADO
 @app.post("/sugerencias")
-def sugerencias_basic(solicitud: SolicitudSugerencias):
+async def sugerencias_dinamicas(solicitud: SolicitudSugerencias):
     try:
+        start_time = time.time()
+        
+        # Verificar si tenemos historial de conversación
+        historial = solicitud.history if solicitud.history else []
+        
+        # Si el sistema IA está disponible, generar sugerencias dinámicas con timeout
+        if ai_system_ready and ai_system_instance and hasattr(ai_system_instance, 'generate_dynamic_suggestions'):
+            try:
+                logger.info("Generando sugerencias dinámicas basadas en conversación")
+                
+                # Ejecutar generación de sugerencias con timeout de 8 segundos
+                loop = asyncio.get_event_loop()
+                sugerencias_task = loop.run_in_executor(
+                    executor, 
+                    ai_system_instance.generate_dynamic_suggestions, 
+                    historial
+                )
+                
+                # Usar timeout para evitar esperas largas
+                try:
+                    sugerencias_dinamicas = await asyncio.wait_for(sugerencias_task, timeout=8.0)
+                    
+                    processing_time = time.time() - start_time
+                    logger.info(f"Sugerencias dinámicas generadas en {processing_time:.2f}s")
+                    
+                    return {"sugerencias": sugerencias_dinamicas}
+                    
+                except asyncio.TimeoutError:
+                    logger.warning("Timeout generando sugerencias dinámicas, usando fallback")
+                    # Cancelar la tarea si es posible
+                    sugerencias_task.cancel()
+                
+            except Exception as ai_error:
+                logger.error(f"Error generando sugerencias dinámicas: {ai_error}")
+        else:
+            logger.info("Sistema IA no disponible para sugerencias, usando básicas")
+        
+        # Sugerencias básicas como fallback (más rápidas)
+        sugerencias_basicas = generar_sugerencias_basicas_rapidas(historial)
+        
+        total_time = time.time() - start_time
+        logger.info(f"Sugerencias básicas generadas en {total_time:.2f}s")
+        
+        return {"sugerencias": sugerencias_basicas}
+        
+    except Exception as e:
+        logger.error(f"Error en endpoint de sugerencias: {e}")
         return {
             "sugerencias": [
                 "¿Qué es la inteligencia artificial?",
-                "¿Cuáles son los algoritmos principales?",
-                "¿Cómo funciona el machine learning?"
+                "¿Cómo funciona el machine learning?",
+                "¿Cuáles son los algoritmos principales?"
             ]
         }
-    except Exception as e:
-        logger.error(f"Error en sugerencias_basic: {e}")
-        return {"error": "Error generando sugerencias"}
 
-def setup_basic_routes():
-    """Esta función ya no es necesaria porque las rutas están definidas arriba"""
-    logger.info("Rutas básicas ya están configuradas")
+def generar_sugerencias_basicas_rapidas(historial):
+    """Versión optimizada de sugerencias básicas para máxima velocidad."""
+    try:
+        if not historial or len(historial) == 0:
+            return [
+                "¿Qué es la inteligencia artificial?",
+                "¿Cómo funciona el machine learning?",
+                "¿Cuáles son los algoritmos principales?"
+            ]
+        
+        # Solo analizar la última respuesta del bot para velocidad
+        ultima_respuesta = ""
+        for mensaje in reversed(historial):
+            if isinstance(mensaje, dict) and mensaje.get('sender') == 'bot':
+                ultima_respuesta = mensaje.get('text', '').lower()
+                break
+        
+        # Sugerencias rápidas basadas en palabras clave simples
+        if 'machine learning' in ultima_respuesta or 'ml' in ultima_respuesta:
+            return [
+                "¿Qué tipos de ML existen?",
+                "¿Cómo funciona el aprendizaje supervisado?",
+                "¿Cuáles son las aplicaciones del ML?"
+            ]
+        elif 'algoritmo' in ultima_respuesta:
+            return [
+                "¿Qué algoritmos son más utilizados?",
+                "¿Cómo se evalúa un algoritmo?",
+                "¿Cuál es mejor para clasificación?"
+            ]
+        elif 'neural' in ultima_respuesta or 'red' in ultima_respuesta:
+            return [
+                "¿Cómo funcionan las redes profundas?",
+                "¿Qué es el backpropagation?",
+                "¿Cuáles son las aplicaciones principales?"
+            ]
+        elif 'datos' in ultima_respuesta or 'entrenamiento' in ultima_respuesta:
+            return [
+                "¿Cómo preparar los datos?",
+                "¿Qué es el overfitting?",
+                "¿Cuántos datos necesito?"
+            ]
+        else:
+            return [
+                "¿Podrías dar ejemplos específicos?",
+                "¿Cómo se aplica en la práctica?",
+                "¿Qué conceptos están relacionados?"
+            ]
+            
+    except Exception as e:
+        logger.error(f"Error generando sugerencias básicas rápidas: {e}")
+        return [
+            "¿Qué es la inteligencia artificial?",
+            "¿Cómo funciona el machine learning?",
+            "¿Cuáles son los algoritmos principales?"
+        ]
 
 # Función para configurar las rutas después de que todo esté cargado
 def setup_routes():

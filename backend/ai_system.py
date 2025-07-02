@@ -452,7 +452,7 @@ class AISystem:
         patrones_tipo_pregunta = {
             "saludo": [r"^(hola|buenos días|buenas tardes|buenas noches|saludos|hey|qué tal|cómo estás)"],
             "despedida": [r"^(adiós|chao|hasta luego|nos vemos|gracias por tu ayuda|gracias|hasta pronto)"],
-            "definicion": [r"(qué|que) (es|son|significa|significan)", r"define|definir|definición"],
+            "definicion": [r"(qué|que) (es|son|significa|significan)", r"define|definir|definición", r"\b(explica|explique|explicar)\b"],
             "ejemplo": [r"(dame|da|muestra|pon) (un|unos|algunos)? ejemplos?", r"ejemplos? de"],
             "comparacion": [r"(compara|comparación|diferencias?) (entre|de)", r"(qué|que|cuál|cual) es (mejor|peor)"],
             "resumen": [r"(resume|resumen|síntesis|sintetiza)", r"(en pocas palabras|brevemente)"],
@@ -492,7 +492,8 @@ class AISystem:
                     search_type="mmr",
                     search_kwargs={"k": 8, "lambda_mult": 0.5}
                 )
-                return retriever.get_relevant_documents(query)
+                # Usar invoke en lugar de get_relevant_documents (deprecado)
+                return retriever.invoke(query)
             elif self.fragmentos:
                 import random
                 return random.sample(self.fragmentos, min(5, len(self.fragmentos)))
@@ -504,14 +505,16 @@ class AISystem:
     def generate_search_query(self, question, conversation_history):
         """Genera una consulta de búsqueda optimizada."""
         try:
-            cadena_reescritura = LLMChain(llm=self.llm, prompt=plantilla_reescritura_pregunta)
+            # Usar RunnableSequence en lugar de LLMChain (deprecado)
+            cadena_reescritura = plantilla_reescritura_pregunta | self.llm
             
             result = cadena_reescritura.invoke({
                 "historial_chat": conversation_history, 
                 "pregunta": question
             })
             
-            return result['text'].strip()
+            # El resultado directo del pipeline es el texto
+            return result.strip() if isinstance(result, str) else str(result).strip()
         except Exception as e:
             logger.error(f"Error generando consulta de búsqueda: {e}")
             return question
@@ -637,6 +640,144 @@ class AISystem:
         response = re.sub(r'\n{3,}', '\n\n', response)
         
         return response
+
+    def generate_dynamic_suggestions(self, conversation_history):
+        """Genera sugerencias dinámicas basadas en el historial de conversación."""
+        try:
+            if not self.llm or not conversation_history:
+                return self._get_fallback_suggestions()
+            
+            # Extraer la última respuesta del bot (limitada para velocidad)
+            ultima_respuesta_bot = ""
+            
+            # Buscar solo la última respuesta del bot (más rápido)
+            for mensaje in reversed(conversation_history):
+                if isinstance(mensaje, dict) and mensaje.get('sender') == 'bot':
+                    ultima_respuesta_bot = mensaje.get('text', '')
+                    break
+            
+            if not ultima_respuesta_bot or len(ultima_respuesta_bot) < 20:
+                logger.info("No se encontró respuesta válida del bot, usando sugerencias por defecto")
+                return self._get_fallback_suggestions()
+            
+            # Limitar el tamaño de la respuesta para velocidad (máximo 300 caracteres)
+            if len(ultima_respuesta_bot) > 300:
+                ultima_respuesta_bot = ultima_respuesta_bot[:300] + "..."
+            
+            # Usar plantilla simplificada para generar sugerencias
+            from templates import plantilla_sugerencias_dinamicas
+            
+            prompt_formateado = plantilla_sugerencias_dinamicas.format(
+                ultima_respuesta=ultima_respuesta_bot,
+                contexto_conversacion="IA y Machine Learning"  # Contexto fijo para velocidad
+            )
+            
+            logger.info("Generando sugerencias dinámicas rápidas")
+            respuesta_llm = self.llm.invoke(prompt_formateado)
+            
+            # Procesar la respuesta para extraer las sugerencias
+            sugerencias = self._parse_suggestions_from_response_fast(respuesta_llm)
+            
+            if len(sugerencias) >= 2:  # Reducir requisito a 2 sugerencias mínimo
+                logger.info(f"Sugerencias dinámicas generadas exitosamente: {len(sugerencias)}")
+                # Asegurar que tenemos exactamente 3 sugerencias
+                while len(sugerencias) < 3:
+                    sugerencias.extend(self._get_contextual_fallback_suggestions(ultima_respuesta_bot))
+                return sugerencias[:3]
+            else:
+                logger.info("LLM no generó suficientes sugerencias, usando fallback contextual")
+                return self._get_contextual_fallback_suggestions(ultima_respuesta_bot)
+                
+        except Exception as e:
+            logger.error(f"Error generando sugerencias dinámicas: {e}")
+            return self._get_fallback_suggestions()
+    
+    def _parse_suggestions_from_response_fast(self, respuesta_llm):
+        """Versión optimizada para extraer sugerencias más rápido."""
+        try:
+            # Limpiar la respuesta
+            respuesta_limpia = respuesta_llm.strip()
+            
+            # Dividir por líneas y procesar más eficientemente
+            lineas = [linea.strip() for linea in respuesta_limpia.split('\n') if linea.strip()]
+            
+            sugerencias = []
+            for linea in lineas[:6]:  # Solo revisar las primeras 6 líneas para velocidad
+                # Limpiar numeración básica
+                linea_limpia = re.sub(r'^\d+[\.\)\-\s]*', '', linea).strip()
+                linea_limpia = re.sub(r'^[\-\*\•\s]+', '', linea_limpia).strip()
+                
+                # Verificar que sea una pregunta válida y corta
+                if (linea_limpia and 
+                    (linea_limpia.startswith('¿') or linea_limpia.lower().startswith(('qué', 'cómo', 'por qué', 'cuál', 'cuáles'))) and
+                    len(linea_limpia) > 8 and len(linea_limpia.split()) <= 12):  # Aumentar límite ligeramente
+                    
+                    # Asegurar que termine con signo de interrogación
+                    if not linea_limpia.endswith('?'):
+                        linea_limpia += '?'
+                    
+                    sugerencias.append(linea_limpia)
+                    
+                    # Salir temprano si ya tenemos 3 sugerencias
+                    if len(sugerencias) >= 3:
+                        break
+            
+            return sugerencias
+            
+        except Exception as e:
+            logger.error(f"Error procesando sugerencias del LLM: {e}")
+            return []
+    
+    def _get_contextual_fallback_suggestions(self, ultima_respuesta):
+        """Genera sugerencias contextuales basadas en palabras clave de la última respuesta."""
+        try:
+            respuesta_lower = ultima_respuesta.lower()
+            
+            # Detectar palabras clave y generar sugerencias específicas
+            if any(keyword in respuesta_lower for keyword in ['machine learning', 'aprendizaje automático', 'ml']):
+                return [
+                    "¿Qué tipos de ML existen?",
+                    "¿Cómo funciona el aprendizaje supervisado?",
+                    "¿Cuáles son las aplicaciones principales?"
+                ]
+            elif any(keyword in respuesta_lower for keyword in ['algoritmo', 'algoritmos']):
+                return [
+                    "¿Qué algoritmos son más eficientes?",
+                    "¿Cómo se evalúa un algoritmo?",
+                    "¿Cuál es mejor para clasificación?"
+                ]
+            elif any(keyword in respuesta_lower for keyword in ['red neural', 'redes neuronales', 'neural']):
+                return [
+                    "¿Cómo funciona el backpropagation?",
+                    "¿Qué son las capas ocultas?",
+                    "¿Cuándo usar redes profundas?"
+                ]
+            elif any(keyword in respuesta_lower for keyword in ['datos', 'dataset', 'entrenamiento']):
+                return [
+                    "¿Cómo preparar los datos?",
+                    "¿Qué es el overfitting?",
+                    "¿Cuántos datos necesito?"
+                ]
+            elif any(keyword in respuesta_lower for keyword in ['ia', 'inteligencia artificial', 'ai']):
+                return [
+                    "¿Qué es la IA simbólica?",
+                    "¿Cómo funciona el procesamiento de lenguaje?",
+                    "¿Cuáles son las aplicaciones actuales?"
+                ]
+            else:
+                return self._get_fallback_suggestions()
+                
+        except Exception as e:
+            logger.error(f"Error en sugerencias contextuales: {e}")
+            return self._get_fallback_suggestions()
+    
+    def _get_fallback_suggestions(self):
+        """Retorna sugerencias por defecto cuando no se pueden generar dinámicamente."""
+        return [
+            "¿Qué es la inteligencia artificial?",
+            "¿Cómo funciona el machine learning?",
+            "¿Cuáles son los algoritmos principales?"
+        ]
 
 # NO crear instancia global automáticamente
 # ai_system = AISystem()

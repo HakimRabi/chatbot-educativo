@@ -253,3 +253,20 @@ plantilla_reescritura_pregunta = PromptTemplate(
     CONSULTA DE BÚSQUEDA REFORMULADA:
     """
 )
+
+# Nueva plantilla para generar sugerencias dinámicas - OPTIMIZADA
+plantilla_sugerencias_dinamicas = PromptTemplate(
+    input_variables=["ultima_respuesta", "contexto_conversacion"],
+    template="""Genera 3 preguntas cortas (máximo 10 palabras) basadas en esta respuesta:
+
+{ultima_respuesta}
+
+Reglas:
+- Solo preguntas sobre IA/Machine Learning
+- Empezar con ¿Qué, ¿Cómo, ¿Por qué, ¿Cuál
+- Máximo 10 palabras por pregunta
+- Una pregunta por línea
+- Sin numeración ni formato
+
+Preguntas:"""
+)
