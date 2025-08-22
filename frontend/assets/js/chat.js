@@ -102,6 +102,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     let lastAnswer = '';
     let messageRatings = {}; // Objeto para almacenar ratings: {respuesta: rating}
     let suggestions = []; // Array para almacenar las sugerencias actuales
+    
+    // Variables para las figuras
+    let figureMap = {};
+    let imageData = [];
+
+    // Cargar datos de figuras al inicializar
+    await loadFigureData();
 
     // Cargar historial si existe una sesión actual
     if (localStorage.getItem('currentSessionId')) {
@@ -141,7 +148,163 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Función modificada para agregar un mensaje al chat con soporte de markdown mejorado
+    // Función para cargar los datos de figuras
+    async function loadFigureData() {
+        try {
+            // Cargar mapa de figuras
+            const figureResponse = await fetch('assets/figures/mapa_figuras.json');
+            if (!figureResponse.ok) {
+                throw new Error(`Error al cargar mapa de figuras: ${figureResponse.status} ${figureResponse.statusText}`);
+            }
+            
+            figureMap = await figureResponse.json();
+            
+            // Cargar datos de imágenes
+            const imageResponse = await fetch('assets/figures/imagenes.json');
+            if (!imageResponse.ok) {
+                throw new Error(`Error al cargar datos de imágenes: ${imageResponse.status} ${imageResponse.statusText}`);
+            }
+            
+            imageData = await imageResponse.json();
+            
+        } catch (error) {
+            console.error('Error al cargar datos de figuras:', error);
+        }
+    }
+
+    // Función para encontrar la imagen correspondiente a una figura
+    function findFigureImage(figureReference) {
+        // Extraer número de figura (ej: "2.14" de "Figura 2.14")
+        const match = figureReference.match(/Figura\s+(\d+\.?\d*)/i);
+        if (!match) return null;
+        
+        const figureNumber = match[1];
+        
+        // Verificar que tenemos datos cargados
+        if (!figureMap || Object.keys(figureMap).length === 0) return null;
+        
+        // Buscar en el mapa de figuras
+        const epsFile = figureMap[figureNumber];
+        if (!epsFile) return null;
+        
+        // Verificar que tenemos datos de imágenes
+        if (!imageData || imageData.length === 0) return null;
+        
+        // Buscar la imagen PNG correspondiente
+        const imageInfo = imageData.find(img => img.archivo === epsFile);
+        if (!imageInfo) return null;
+        
+        return {
+            figureNumber,
+            epsFile,
+            pngFile: imageInfo.png,
+            width: imageInfo.ancho,
+            height: imageInfo.alto
+        };
+    }
+
+    // Función modificada para procesar texto y agregar imágenes de figuras (evitar duplicados)
+    function processFigureReferences(text) {
+        const figureRegex = /Figura\s+(\d+\.?\d*)/gi;
+        let processedText = text;
+        let figuresFound = [];
+        let processedFigures = new Set(); // Para evitar duplicados
+        let allMatches = [];
+        
+        // Primero, encontrar TODAS las coincidencias
+        let match;
+        figureRegex.lastIndex = 0; // Reset regex
+        
+        while ((match = figureRegex.exec(text)) !== null) {
+            allMatches.push({
+                fullMatch: match[0], // "Figura 2.14"
+                figureNumber: match[1], // "2.14"
+                index: match.index
+            });
+        }
+        
+        // Procesar cada coincidencia única
+        allMatches.forEach((matchInfo) => {
+            const { fullMatch, figureNumber } = matchInfo;
+            
+            // Solo procesar cada figura una vez
+            if (!processedFigures.has(figureNumber)) {
+                const imageInfo = findFigureImage(fullMatch);
+                if (imageInfo) {
+                    figuresFound.push(imageInfo);
+                    processedFigures.add(figureNumber);
+                    
+                    // Reemplazar solo la PRIMERA aparición de esta figura específica
+                    const figureRegexForReplace = new RegExp(`Figura\\s+${figureNumber.replace('.', '\\.')}`, 'i');
+                    if (processedText.match(figureRegexForReplace)) {
+                        const imageMarker = `[FIGURA_${figureNumber}_PLACEHOLDER]`;
+                        processedText = processedText.replace(figureRegexForReplace, `${fullMatch}${imageMarker}`);
+                    }
+                }
+            }
+        });
+        
+        return { processedText, figuresFound };
+    }
+
+    // Función para insertar imágenes en el contenido HTML
+    function insertFigureImages(htmlContent, figuresFound) {
+        let modifiedContent = htmlContent;
+        
+        figuresFound.forEach((figure) => {
+            const placeholder = `[FIGURA_${figure.figureNumber}_PLACEHOLDER]`;
+            
+            if (modifiedContent.includes(placeholder)) {
+                const imageHtml = createFigureImageHtml(figure);
+                modifiedContent = modifiedContent.replace(placeholder, imageHtml);
+            }
+        });
+        
+        return modifiedContent;
+    }
+
+    // Función para crear el HTML de una imagen de figura
+    function createFigureImageHtml(figure) {
+        const maxWidth = 400; // Ancho máximo para las imágenes
+        const aspectRatio = figure.height / figure.width;
+        const displayWidth = Math.min(maxWidth, figure.width);
+        
+        const imageUrl = `assets/figures/png/${figure.pngFile}`;
+        
+        return `
+            <div class="figure-container" style="margin: 15px 0;">
+                <div class="figure-image-wrapper" style="text-align: center;">
+                    <img 
+                        src="${imageUrl}" 
+                        alt="Figura ${figure.figureNumber}" 
+                        class="figure-image"
+                        style="
+                            max-width: ${displayWidth}px;
+                            height: auto;
+                            border: 1px solid #e9ecef;
+                            border-radius: 8px;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            cursor: pointer;
+                            transition: transform 0.2s ease;
+                        "
+                        onclick="openImageModal('${imageUrl}', 'Figura ${figure.figureNumber}')"
+                        onmouseover="this.style.transform='scale(1.02)'"
+                        onmouseout="this.style.transform='scale(1)'"
+                    />
+                    <div class="figure-caption" style="
+                        margin-top: 8px;
+                        font-size: 12px;
+                        color: #6c757d;
+                        font-style: italic;
+                    ">
+                        Figura ${figure.figureNumber} - Clic para ampliar
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Función modificada para agregar un mensaje al chat con soporte de figuras
     function addMessage(message, sender, saveToHistory = true) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
@@ -150,65 +313,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
         
-        // Si es un mensaje del bot, renderizar markdown
+        // Si es un mensaje del bot, renderizar markdown y procesar figuras
         if (sender === 'bot') {
+            // Procesar referencias de figuras ANTES del renderizado markdown
+            const { processedText, figuresFound } = processFigureReferences(message);
+            
             // Configurar marked para un renderizado más avanzado
             marked.setOptions({
-                breaks: true,        // Convertir saltos de línea simples
-                gfm: true,          // GitHub Flavored Markdown
-                sanitize: false,    // Permitir HTML seguro
-                smartLists: true,   // Listas inteligentes
-                smartypants: true,  // Tipografía inteligente
-                headerIds: false,   // No generar IDs para headers
-                mangle: false,      // No cambiar emails
-                pedantic: false,    // No ser estricto con markdown
-                silent: true        // No mostrar errores en consola
+                breaks: true,
+                gfm: true,
+                sanitize: false,
+                smartLists: true,
+                smartypants: true,
+                headerIds: false,
+                mangle: false,
+                pedantic: false,
+                silent: true
             });
             
-            // Pre-procesamiento mejorado para mejor formato
-            let processedMessage = message;
+            let processedMessage = processedText;
             
-            // Limpiar el mensaje de espacios innecesarios y normalizar saltos de línea
+            // Limpieza y normalización de texto
             processedMessage = processedMessage
-                // Normalizar espacios múltiples
                 .replace(/[ \t]+/g, ' ')
-
-                // Normalizar saltos de línea múltiples (máximo 2)
                 .replace(/\n{3,}/g, '\n\n')
-                
-                // Mejorar formato de listas con viñetas
                 .replace(/^[•·]\s+/gm, '- ')
                 .replace(/^\*\s+/gm, '- ')
                 .replace(/^-\s+/gm, '- ')
-                
-                // Asegurar espaciado correcto para listas numeradas
                 .replace(/^(\d+)\.\s+/gm, '$1. ')
-                
-                // Convertir texto en negritas si no está marcado (patrones comunes)
                 .replace(/\b([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?: [A-Za-záéíóúñ]+)*?):\s/g, '**$1:** ')
-                
-                // Mejorar formato de conceptos clave
                 .replace(/^(Definición|Características|Aplicaciones|Ejemplos|Ventajas|Desventajas|Tipos|Clasificación|Conclusión):\s*/gmi, '**$1:** ')
-                
-                // Convertir enumeraciones simples a listas markdown
                 .replace(/^(\d+)\)\s+/gm, '$1. ')
                 .replace(/^([a-z])\)\s+/gm, '- ')
-                
-                // Mejorar separadores
                 .replace(/^[-=]{3,}$/gm, '\n---\n')
-                
-                // Asegurar que las líneas no terminen con espacios
                 .replace(/[ \t]+$/gm, '')
-                
-                // Mejorar formato de tablas - NUEVO
                 .replace(/\|([^|\n]+)\|/g, function(match, content) {
-                    // Limpiar espacios en celdas de tabla
                     return '|' + content.trim() + '|';
                 })
-                
-                // Asegurar separadores de tabla correctos
                 .replace(/\|\s*[-:]+\s*\|/g, function(match) {
-                    // Normalizar separadores de tabla
                     const cells = match.split('|').filter(cell => cell.trim());
                     return '|' + cells.map(cell => {
                         const cleaned = cell.trim();
@@ -218,22 +360,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         return cleaned.replace(/-+/, '---');
                     }).join('|') + '|';
                 })
-                
-                // Detectar y mejorar tablas simples (sin formato markdown)
                 .replace(/^(.+\|.+)$/gm, function(match) {
-                    // Si la línea contiene pipes pero no está bien formateada
                     if (!match.startsWith('|') && match.includes('|')) {
                         return '|' + match + '|';
                     }
                     return match;
                 })
-                
-                // LÍNEA PROBLEMÁTICA ELIMINADA - Esta causaba el corte de palabras
-                // .replace(/(\S{60})(\S)/g, '$1 $2');
-                
-                // Opcional: Mejorar saltos de línea preservando palabras completas
                 .replace(/(.{80,}?)\s+/g, function(match, p1) {
-                    // Solo agregar salto si la línea es muy larga y hay un espacio natural
                     return p1.length > 100 ? p1 + '\n' : match;
                 });
     
@@ -246,10 +379,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 htmlContent = `<p>${processedMessage.replace(/\n/g, '<br>')}</p>`;
             }
             
+            // Insertar imágenes de figuras en el HTML
+            if (figuresFound.length > 0) {
+                htmlContent = insertFigureImages(htmlContent, figuresFound);
+            }
             
             // Post-procesamiento del HTML para mejorar la presentación
             htmlContent = htmlContent
-                // Agregar clases CSS específicas para mejor estilo
                 .replace(/<h([1-6])>/g, '<h$1 class="bot-heading">')
                 .replace(/<p>/g, '<p class="bot-paragraph">')
                 .replace(/<ul>/g, '<ul class="bot-list">')
@@ -262,25 +398,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .replace(/<pre>/g, '<pre class="bot-code-block">')
                 .replace(/<blockquote>/g, '<blockquote class="bot-quote">')
                 .replace(/<hr>/g, '<hr class="bot-separator">')
-                
-                // Mejorar tablas - NUEVO
                 .replace(/<table>/g, '<table class="bot-table">')
                 .replace(/<thead>/g, '<thead class="bot-table-head">')
                 .replace(/<tbody>/g, '<tbody class="bot-table-body">')
                 .replace(/<tr>/g, '<tr class="bot-table-row">')
                 .replace(/<th>/g, '<th class="bot-table-header">')
                 .replace(/<td>/g, '<td class="bot-table-cell">')
-                
-                // Limpiar párrafos vacíos
                 .replace(/<p class="bot-paragraph">\s*<\/p>/g, '')
                 .replace(/<p>\s*<\/p>/g, '')
-                
-                // Mejorar espaciado en listas
                 .replace(/(<\/li>)\s*(<li)/g, '$1\n$2')
-                
-                // Asegurar que el código inline no se rompa
                 .replace(/<code class="bot-code">([^<]*)<\/code>/g, (match, content) => {
-                    // Evitar saltos de línea dentro del código inline
                     const cleanContent = content.replace(/\s+/g, ' ').trim();
                     return `<code class="bot-code">${cleanContent}</code>`;
                 });
@@ -753,7 +880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (Array.isArray(data)) {
                 history = data;
                 
-                // Limpiar el chat actual
+                // Limpiar el chat current
                 chatMessages.innerHTML = '';
                 
                 // Mostrar mensajes del historial
@@ -1171,7 +1298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Función para actualizar las sugerencias
 function actualizarSugerencias() {
-    // Obtener el historial de chat actual
+    // Obtener el historial de chat current
     const chatHistory = obtenerHistorialChat(); // Implementa esta función según tu lógica actual
     
     // Llamar al endpoint para generar sugerencias

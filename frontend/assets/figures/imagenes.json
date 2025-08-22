@@ -1,0 +1,3092 @@
+[
+    {
+        "archivo": "101087.eps",
+        "png": "101087.png",
+        "ancho": 401,
+        "alto": 601
+    },
+    {
+        "archivo": "101087_seg_th0.eps",
+        "png": "101087_seg_th0.png",
+        "ancho": 401,
+        "alto": 601
+    },
+    {
+        "archivo": "101087_seg_th0_5.eps",
+        "png": "101087_seg_th0_5.png",
+        "ancho": 401,
+        "alto": 601
+    },
+    {
+        "archivo": "101087_ucm_th0.eps",
+        "png": "101087_ucm_th0.png",
+        "ancho": 401,
+        "alto": 601
+    },
+    {
+        "archivo": "313-heart-disease.eps",
+        "png": "313-heart-disease.png",
+        "ancho": 1310,
+        "alto": 550
+    },
+    {
+        "archivo": "3candy.eps",
+        "png": "3candy.png",
+        "ancho": 1518,
+        "alto": 359
+    },
+    {
+        "archivo": "3cases.eps",
+        "png": "3cases.png",
+        "ancho": 1669,
+        "alto": 568
+    },
+    {
+        "archivo": "4bit-adder.eps",
+        "png": "4bit-adder.png",
+        "ancho": 1203,
+        "alto": 606
+    },
+    {
+        "archivo": "4x3-greedy-adp-error+loss.eps",
+        "png": "4x3-greedy-adp-error+loss.png",
+        "ancho": 871,
+        "alto": 570
+    },
+    {
+        "archivo": "4x3-greedy-adp-policy.eps",
+        "png": "4x3-greedy-adp-policy.png",
+        "ancho": 789,
+        "alto": 637
+    },
+    {
+        "archivo": "4x3-optimal-policy.eps",
+        "png": "4x3-optimal-policy.png",
+        "ancho": 765,
+        "alto": 607
+    },
+    {
+        "archivo": "8puzzle-pattern.eps",
+        "png": "8puzzle-pattern.png",
+        "ancho": 901,
+        "alto": 462
+    },
+    {
+        "archivo": "8puzzle.eps",
+        "png": "8puzzle.png",
+        "ancho": 901,
+        "alto": 470
+    },
+    {
+        "archivo": "8queens-crossover.eps",
+        "png": "8queens-crossover.png",
+        "ancho": 1470,
+        "alto": 425
+    },
+    {
+        "archivo": "8queens-local-minimum.eps",
+        "png": "8queens-local-minimum.png",
+        "ancho": 788,
+        "alto": 788
+    },
+    {
+        "archivo": "8queens-min-conflicts.eps",
+        "png": "8queens-min-conflicts.png",
+        "ancho": 1577,
+        "alto": 479
+    },
+    {
+        "archivo": "8queens-successors.eps",
+        "png": "8queens-successors.png",
+        "ancho": 730,
+        "alto": 730
+    },
+    {
+        "archivo": "8queens.eps",
+        "png": "8queens.png",
+        "ancho": 749,
+        "alto": 749
+    },
+    {
+        "archivo": "activation-fns.eps",
+        "png": "activation-fns.png",
+        "ancho": 1144,
+        "alto": 454
+    },
+    {
+        "archivo": "adder.eps",
+        "png": "adder.png",
+        "ancho": 1195,
+        "alto": 507
+    },
+    {
+        "archivo": "adversary-blocks.eps",
+        "png": "adversary-blocks.png",
+        "ancho": 756,
+        "alto": 535
+    },
+    {
+        "archivo": "adversary-spaces.eps",
+        "png": "adversary-spaces.png",
+        "ancho": 691,
+        "alto": 762
+    },
+    {
+        "archivo": "agent-environment.eps",
+        "png": "agent-environment.png",
+        "ancho": 1142,
+        "alto": 724
+    },
+    {
+        "archivo": "aibo+ball.eps",
+        "png": "aibo+ball.png",
+        "ancho": 932,
+        "alto": 725
+    },
+    {
+        "archivo": "AICS4-test-CS4-eps.eps",
+        "png": "AICS4-test-CS4-eps.png",
+        "ancho": 1634,
+        "alto": 985
+    },
+    {
+        "archivo": "airport-au-id.eps",
+        "png": "airport-au-id.png",
+        "ancho": 873,
+        "alto": 677
+    },
+    {
+        "archivo": "airport-id.eps",
+        "png": "airport-id.png",
+        "ancho": 873,
+        "alto": 677
+    },
+    {
+        "archivo": "all-models-both.eps",
+        "png": "all-models-both.png",
+        "ancho": 1567,
+        "alto": 721
+    },
+    {
+        "archivo": "all-models-database.eps",
+        "png": "all-models-database.png",
+        "ancho": 1167,
+        "alto": 349
+    },
+    {
+        "archivo": "all-models-standard.eps",
+        "png": "all-models-standard.png",
+        "ancho": 1567,
+        "alto": 340
+    },
+    {
+        "archivo": "allen-time-interval.eps",
+        "png": "allen-time-interval.png",
+        "ancho": 1542,
+        "alto": 701
+    },
+    {
+        "archivo": "alpha-beta-general.eps",
+        "png": "alpha-beta-general.png",
+        "ancho": 604,
+        "alto": 660
+    },
+    {
+        "archivo": "alpha-beta-progress.eps",
+        "png": "alpha-beta-progress.png",
+        "ancho": 1438,
+        "alto": 1088
+    },
+    {
+        "archivo": "alpha-beta-proof.eps",
+        "png": "alpha-beta-proof.png",
+        "ancho": 605,
+        "alto": 795
+    },
+    {
+        "archivo": "analogy.eps",
+        "png": "analogy.png",
+        "ancho": 1470,
+        "alto": 748
+    },
+    {
+        "archivo": "andy2.eps",
+        "png": "andy2.png",
+        "ancho": 742,
+        "alto": 735
+    },
+    {
+        "archivo": "approximate-HLA.eps",
+        "png": "approximate-HLA.png",
+        "ancho": 1577,
+        "alto": 804
+    },
+    {
+        "archivo": "arena010.eps",
+        "png": "arena010.png",
+        "ancho": 769,
+        "alto": 769
+    },
+    {
+        "archivo": "arena020.eps",
+        "png": "arena020.png",
+        "ancho": 769,
+        "alto": 769
+    },
+    {
+        "archivo": "arena033.eps",
+        "png": "arena033.png",
+        "ancho": 769,
+        "alto": 769
+    },
+    {
+        "archivo": "arena034.eps",
+        "png": "arena034.png",
+        "ancho": 769,
+        "alto": 769
+    },
+    {
+        "archivo": "armControlP0.1.eps",
+        "png": "armControlP0.1.png",
+        "ancho": 540,
+        "alto": 540
+    },
+    {
+        "archivo": "armControlP0.3D0.8.eps",
+        "png": "armControlP0.3D0.8.png",
+        "ancho": 540,
+        "alto": 540
+    },
+    {
+        "archivo": "armControlP1.0.eps",
+        "png": "armControlP1.0.png",
+        "ancho": 540,
+        "alto": 540
+    },
+    {
+        "archivo": "armDPwithoutPotential.eps",
+        "png": "armDPwithoutPotential.png",
+        "ancho": 783,
+        "alto": 845
+    },
+    {
+        "archivo": "armDPwithoutPotentialCoarse.eps",
+        "png": "armDPwithoutPotentialCoarse.png",
+        "ancho": 694,
+        "alto": 694
+    },
+    {
+        "archivo": "armDPwithoutPotentialWorkspace.eps",
+        "png": "armDPwithoutPotentialWorkspace.png",
+        "ancho": 750,
+        "alto": 758
+    },
+    {
+        "archivo": "armDPwithoutPotentialWorkspaceCoarse.eps",
+        "png": "armDPwithoutPotentialWorkspaceCoarse.png",
+        "ancho": 769,
+        "alto": 769
+    },
+    {
+        "archivo": "armDPwithPotential.eps",
+        "png": "armDPwithPotential.png",
+        "ancho": 783,
+        "alto": 783
+    },
+    {
+        "archivo": "armExampleConfSpace.eps",
+        "png": "armExampleConfSpace.png",
+        "ancho": 827,
+        "alto": 835
+    },
+    {
+        "archivo": "armExampleWorkSpace.eps",
+        "png": "armExampleWorkSpace.png",
+        "ancho": 761,
+        "alto": 697
+    },
+    {
+        "archivo": "armPlain.eps",
+        "png": "armPlain.png",
+        "ancho": 761,
+        "alto": 697
+    },
+    {
+        "archivo": "armPlainConfSpace.eps",
+        "png": "armPlainConfSpace.png",
+        "ancho": 832,
+        "alto": 841
+    },
+    {
+        "archivo": "armPotentialField.eps",
+        "png": "armPotentialField.png",
+        "ancho": 783,
+        "alto": 783
+    },
+    {
+        "archivo": "armRoadmap.eps",
+        "png": "armRoadmap.png",
+        "ancho": 783,
+        "alto": 783
+    },
+    {
+        "archivo": "armSimplePotential.eps",
+        "png": "armSimplePotential.png",
+        "ancho": 783,
+        "alto": 783
+    },
+    {
+        "archivo": "armSimplePotentialAlt.eps",
+        "png": "armSimplePotentialAlt.png",
+        "ancho": 783,
+        "alto": 783
+    },
+    {
+        "archivo": "armslegs.eps",
+        "png": "armslegs.png",
+        "ancho": 1345,
+        "alto": 685
+    },
+    {
+        "archivo": "armVoronoi.eps",
+        "png": "armVoronoi.png",
+        "ancho": 783,
+        "alto": 783
+    },
+    {
+        "archivo": "astar-progress.eps",
+        "png": "astar-progress.png",
+        "ancho": 1380,
+        "alto": 2273
+    },
+    {
+        "archivo": "atomic-factored-structured.eps",
+        "png": "atomic-factored-structured.png",
+        "ancho": 1534,
+        "alto": 573
+    },
+    {
+        "archivo": "australia-csp.eps",
+        "png": "australia-csp.png",
+        "ancho": 795,
+        "alto": 691
+    },
+    {
+        "archivo": "australia-decomposition.eps",
+        "png": "australia-decomposition.png",
+        "ancho": 1069,
+        "alto": 841
+    },
+    {
+        "archivo": "australia-fc.eps",
+        "png": "australia-fc.png",
+        "ancho": 1336,
+        "alto": 288
+    },
+    {
+        "archivo": "australia-search.eps",
+        "png": "australia-search.png",
+        "ancho": 1317,
+        "alto": 500
+    },
+    {
+        "archivo": "australia-tree.eps",
+        "png": "australia-tree.png",
+        "ancho": 795,
+        "alto": 691
+    },
+    {
+        "archivo": "australia.eps",
+        "png": "australia.png",
+        "ancho": 793,
+        "alto": 663
+    },
+    {
+        "archivo": "backgammon-position.eps",
+        "png": "backgammon-position.png",
+        "ancho": 873,
+        "alto": 859
+    },
+    {
+        "archivo": "backgammon-tree.eps",
+        "png": "backgammon-tree.png",
+        "ancho": 1202,
+        "alto": 974
+    },
+    {
+        "archivo": "battery-persistence.eps",
+        "png": "battery-persistence.png",
+        "ancho": 619,
+        "alto": 564
+    },
+    {
+        "archivo": "bayesian-learning-network.eps",
+        "png": "bayesian-learning-network.png",
+        "ancho": 1055,
+        "alto": 849
+    },
+    {
+        "archivo": "BDI-BIGDOG-2.eps",
+        "png": "BDI-BIGDOG-2.png",
+        "ancho": 957,
+        "alto": 1140
+    },
+    {
+        "archivo": "BDI-DKFI.eps",
+        "png": "BDI-DKFI.png",
+        "ancho": 1573,
+        "alto": 890
+    },
+    {
+        "archivo": "bfs-progress.eps",
+        "png": "bfs-progress.png",
+        "ancho": 1642,
+        "alto": 237
+    },
+    {
+        "archivo": "bidirectional.eps",
+        "png": "bidirectional.png",
+        "ancho": 928,
+        "alto": 461
+    },
+    {
+        "archivo": "bin_grid.eps",
+        "png": "bin_grid.png",
+        "ancho": 525,
+        "alto": 533
+    },
+    {
+        "archivo": "blocks-world.eps",
+        "png": "blocks-world.png",
+        "ancho": 1654,
+        "alto": 949
+    },
+    {
+        "archivo": "boid1.eps",
+        "png": "boid1.png",
+        "ancho": 1069,
+        "alto": 871
+    },
+    {
+        "archivo": "boid2.eps",
+        "png": "boid2.png",
+        "ancho": 625,
+        "alto": 417
+    },
+    {
+        "archivo": "boid2old.eps",
+        "png": "boid2old.png",
+        "ancho": 342,
+        "alto": 271
+    },
+    {
+        "archivo": "boid4.eps",
+        "png": "boid4.png",
+        "ancho": 3617,
+        "alto": 3346
+    },
+    {
+        "archivo": "boids-neurogame.eps",
+        "png": "boids-neurogame.png",
+        "ancho": 1654,
+        "alto": 470
+    },
+    {
+        "archivo": "book-check.eps",
+        "png": "book-check.png",
+        "ancho": 159,
+        "alto": 110
+    },
+    {
+        "archivo": "book.eps",
+        "png": "book.png",
+        "ancho": 159,
+        "alto": 110
+    },
+    {
+        "archivo": "boosting.eps",
+        "png": "boosting.png",
+        "ancho": 984,
+        "alto": 823
+    },
+    {
+        "archivo": "bottle-stereo.eps",
+        "png": "bottle-stereo.png",
+        "ancho": 989,
+        "alto": 542
+    },
+    {
+        "archivo": "brio.eps",
+        "png": "brio.png",
+        "ancho": 1314,
+        "alto": 303
+    },
+    {
+        "archivo": "broxrevised.eps",
+        "png": "broxrevised.png",
+        "ancho": 1631,
+        "alto": 529
+    },
+    {
+        "archivo": "burglary-mess.eps",
+        "png": "burglary-mess.png",
+        "ancho": 1400,
+        "alto": 791
+    },
+    {
+        "archivo": "burglary2.eps",
+        "png": "burglary2.png",
+        "ancho": 956,
+        "alto": 675
+    },
+    {
+        "archivo": "burglary2a.eps",
+        "png": "burglary2a.png",
+        "ancho": 1068,
+        "alto": 718
+    },
+    {
+        "archivo": "c24f001.eps",
+        "png": "c24f001.png",
+        "ancho": 1609,
+        "alto": 719
+    },
+    {
+        "archivo": "c24f013.eps",
+        "png": "c24f013.png",
+        "ancho": 1135,
+        "alto": 751
+    },
+    {
+        "archivo": "c24f017.eps",
+        "png": "c24f017.png",
+        "ancho": 1500,
+        "alto": 851
+    },
+    {
+        "archivo": "c24f022-a.eps",
+        "png": "c24f022-a.png",
+        "ancho": 1646,
+        "alto": 938
+    },
+    {
+        "archivo": "camp-test.eps",
+        "png": "camp-test.png",
+        "ancho": 782,
+        "alto": 546
+    },
+    {
+        "archivo": "car-like.eps",
+        "png": "car-like.png",
+        "ancho": 568,
+        "alto": 331
+    },
+    {
+        "archivo": "car-starts.eps",
+        "png": "car-starts.png",
+        "ancho": 1153,
+        "alto": 632
+    },
+    {
+        "archivo": "Cars.eps",
+        "png": "Cars.png",
+        "ancho": 1608,
+        "alto": 1274
+    },
+    {
+        "archivo": "cart-pole.eps",
+        "png": "cart-pole.png",
+        "ancho": 817,
+        "alto": 674
+    },
+    {
+        "archivo": "cash-machine-and-decomposability.eps",
+        "png": "cash-machine-and-decomposability.png",
+        "ancho": 1319,
+        "alto": 815
+    },
+    {
+        "archivo": "cash-machine.eps",
+        "png": "cash-machine.png",
+        "ancho": 504,
+        "alto": 545
+    },
+    {
+        "archivo": "cbh.eps",
+        "png": "cbh.png",
+        "ancho": 1642,
+        "alto": 509
+    },
+    {
+        "archivo": "chance-evaluation.eps",
+        "png": "chance-evaluation.png",
+        "ancho": 1642,
+        "alto": 667
+    },
+    {
+        "archivo": "chart.eps",
+        "png": "chart.png",
+        "ancho": 1173,
+        "alto": 348
+    },
+    {
+        "archivo": "chem-test.eps",
+        "png": "chem-test.png",
+        "ancho": 788,
+        "alto": 558
+    },
+    {
+        "archivo": "chess-evaluation3.eps",
+        "png": "chess-evaluation3.png",
+        "ancho": 1664,
+        "alto": 722
+    },
+    {
+        "archivo": "classical-DA.eps",
+        "png": "classical-DA.png",
+        "ancho": 1542,
+        "alto": 942
+    },
+    {
+        "archivo": "coin-independence.eps",
+        "png": "coin-independence.png",
+        "ancho": 719,
+        "alto": 652
+    },
+    {
+        "archivo": "communication.eps",
+        "png": "communication.png",
+        "ancho": 1646,
+        "alto": 1027
+    },
+    {
+        "archivo": "compilation.eps",
+        "png": "compilation.png",
+        "ancho": 1187,
+        "alto": 432
+    },
+    {
+        "archivo": "complex-events.eps",
+        "png": "complex-events.png",
+        "ancho": 1480,
+        "alto": 253
+    },
+    {
+        "archivo": "continuous-net.eps",
+        "png": "continuous-net.png",
+        "ancho": 494,
+        "alto": 369
+    },
+    {
+        "archivo": "crime-bc.eps",
+        "png": "crime-bc.png",
+        "ancho": 1475,
+        "alto": 674
+    },
+    {
+        "archivo": "crime-fc.eps",
+        "png": "crime-fc.png",
+        "ancho": 1314,
+        "alto": 544
+    },
+    {
+        "archivo": "crime-resolution.eps",
+        "png": "crime-resolution.png",
+        "ancho": 1553,
+        "alto": 744
+    },
+    {
+        "archivo": "cryptarithmetic.eps",
+        "png": "cryptarithmetic.png",
+        "ancho": 1309,
+        "alto": 588
+    },
+    {
+        "archivo": "cumulative-learning.eps",
+        "png": "cumulative-learning.png",
+        "ancho": 1572,
+        "alto": 399
+    },
+    {
+        "archivo": "curiosity.eps",
+        "png": "curiosity.png",
+        "ancho": 1614,
+        "alto": 472
+    },
+    {
+        "archivo": "darkricegrad.eps",
+        "png": "darkricegrad.png",
+        "ancho": 774,
+        "alto": 774
+    },
+    {
+        "archivo": "dbn-unrolling.eps",
+        "png": "dbn-unrolling.png",
+        "ancho": 1537,
+        "alto": 432
+    },
+    {
+        "archivo": "decision-list.eps",
+        "png": "decision-list.png",
+        "ancho": 1314,
+        "alto": 226
+    },
+    {
+        "archivo": "decomposability.eps",
+        "png": "decomposability.png",
+        "ancho": 794,
+        "alto": 1072
+    },
+    {
+        "archivo": "dentist-network.eps",
+        "png": "dentist-network.png",
+        "ancho": 739,
+        "alto": 362
+    },
+    {
+        "archivo": "DenvierStation.eps",
+        "png": "DenvierStation.png",
+        "ancho": 886,
+        "alto": 750
+    },
+    {
+        "archivo": "DFKI-B-Human-7.eps",
+        "png": "DFKI-B-Human-7.png",
+        "ancho": 2748,
+        "alto": 2748
+    },
+    {
+        "archivo": "dfs-progress-noblack.eps",
+        "png": "dfs-progress-noblack.png",
+        "ancho": 1558,
+        "alto": 1311
+    },
+    {
+        "archivo": "dfs-progress.eps",
+        "png": "dfs-progress.png",
+        "ancho": 1558,
+        "alto": 1311
+    },
+    {
+        "archivo": "diamond.eps",
+        "png": "diamond.png",
+        "ancho": 1158,
+        "alto": 617
+    },
+    {
+        "archivo": "diff-edges.eps",
+        "png": "diff-edges.png",
+        "ancho": 1634,
+        "alto": 811
+    },
+    {
+        "archivo": "diff-labels.eps",
+        "png": "diff-labels.png",
+        "ancho": 1209,
+        "alto": 422
+    },
+    {
+        "archivo": "drinking-2.eps",
+        "png": "drinking-2.png",
+        "ancho": 1619,
+        "alto": 262
+    },
+    {
+        "archivo": "earthquake-bomb.eps",
+        "png": "earthquake-bomb.png",
+        "ancho": 3525,
+        "alto": 2475
+    },
+    {
+        "archivo": "earthquake-nn1.eps",
+        "png": "earthquake-nn1.png",
+        "ancho": 729,
+        "alto": 533
+    },
+    {
+        "archivo": "earthquake-nn3.eps",
+        "png": "earthquake-nn3.png",
+        "ancho": 749,
+        "alto": 529
+    },
+    {
+        "archivo": "earthquake-nn5.eps",
+        "png": "earthquake-nn5.png",
+        "ancho": 729,
+        "alto": 528
+    },
+    {
+        "archivo": "easy-hard.eps",
+        "png": "easy-hard.png",
+        "ancho": 1528,
+        "alto": 333
+    },
+    {
+        "archivo": "easy12.eps",
+        "png": "easy12.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy12b.eps",
+        "png": "easy12b.png",
+        "ancho": 233,
+        "alto": 229
+    },
+    {
+        "archivo": "easy12c.eps",
+        "png": "easy12c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy13.eps",
+        "png": "easy13.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy13c.eps",
+        "png": "easy13c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy16.eps",
+        "png": "easy16.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy16c.eps",
+        "png": "easy16c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy17.eps",
+        "png": "easy17.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy17c.eps",
+        "png": "easy17c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy19.eps",
+        "png": "easy19.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy19c.eps",
+        "png": "easy19c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy20.eps",
+        "png": "easy20.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy20c.eps",
+        "png": "easy20c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy21.eps",
+        "png": "easy21.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy21c.eps",
+        "png": "easy21c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy23.eps",
+        "png": "easy23.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy23c.eps",
+        "png": "easy23c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy29.eps",
+        "png": "easy29.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy29c.eps",
+        "png": "easy29c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "easy35.eps",
+        "png": "easy35.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "easy35c.eps",
+        "png": "easy35c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "eatcake-graphplan2.eps",
+        "png": "eatcake-graphplan2.png",
+        "ancho": 1652,
+        "alto": 374
+    },
+    {
+        "archivo": "edgewderiv.eps",
+        "png": "edgewderiv.png",
+        "ancho": 1261,
+        "alto": 998
+    },
+    {
+        "archivo": "ensemble-expressiveness.eps",
+        "png": "ensemble-expressiveness.png",
+        "ancho": 984,
+        "alto": 687
+    },
+    {
+        "archivo": "enumeration-tree.eps",
+        "png": "enumeration-tree.png",
+        "ancho": 1580,
+        "alto": 867
+    },
+    {
+        "archivo": "epsilon-ball.eps",
+        "png": "epsilon-ball.png",
+        "ancho": 904,
+        "alto": 681
+    },
+    {
+        "archivo": "erratic-vacuum-and-or-plan.eps",
+        "png": "erratic-vacuum-and-or-plan.png",
+        "ancho": 1256,
+        "alto": 1156
+    },
+    {
+        "archivo": "event-space.eps",
+        "png": "event-space.png",
+        "ancho": 1230,
+        "alto": 834
+    },
+    {
+        "archivo": "everything.eps",
+        "png": "everything.png",
+        "ancho": 1658,
+        "alto": 765
+    },
+    {
+        "archivo": "exampleA3.eps",
+        "png": "exampleA3.png",
+        "ancho": 532,
+        "alto": 664
+    },
+    {
+        "archivo": "exampleA4.eps",
+        "png": "exampleA4.png",
+        "ancho": 522,
+        "alto": 654
+    },
+    {
+        "archivo": "exampleA5.eps",
+        "png": "exampleA5.png",
+        "ancho": 388,
+        "alto": 485
+    },
+    {
+        "archivo": "exampleA6.eps",
+        "png": "exampleA6.png",
+        "ancho": 402,
+        "alto": 345
+    },
+    {
+        "archivo": "exampleA7.eps",
+        "png": "exampleA7.png",
+        "ancho": 402,
+        "alto": 345
+    },
+    {
+        "archivo": "exampleA8.eps",
+        "png": "exampleA8.png",
+        "ancho": 402,
+        "alto": 345
+    },
+    {
+        "archivo": "exerciseConf2.eps",
+        "png": "exerciseConf2.png",
+        "ancho": 535,
+        "alto": 535
+    },
+    {
+        "archivo": "exerciseConf4.eps",
+        "png": "exerciseConf4.png",
+        "ancho": 535,
+        "alto": 535
+    },
+    {
+        "archivo": "exerciseConf5.eps",
+        "png": "exerciseConf5.png",
+        "ancho": 535,
+        "alto": 535
+    },
+    {
+        "archivo": "exerciseRobot1.eps",
+        "png": "exerciseRobot1.png",
+        "ancho": 535,
+        "alto": 535
+    },
+    {
+        "archivo": "exerciseRobot3.eps",
+        "png": "exerciseRobot3.png",
+        "ancho": 535,
+        "alto": 535
+    },
+    {
+        "archivo": "exerciseRobot6.eps",
+        "png": "exerciseRobot6.png",
+        "ancho": 535,
+        "alto": 535
+    },
+    {
+        "archivo": "extensive-game.eps",
+        "png": "extensive-game.png",
+        "ancho": 1022,
+        "alto": 977
+    },
+    {
+        "archivo": "f-circles.eps",
+        "png": "f-circles.png",
+        "ancho": 1202,
+        "alto": 776
+    },
+    {
+        "archivo": "face-finding.eps",
+        "png": "face-finding.png",
+        "ancho": 1146,
+        "alto": 810
+    },
+    {
+        "archivo": "facesys2.eps",
+        "png": "facesys2.png",
+        "ancho": 1226,
+        "alto": 555
+    },
+    {
+        "archivo": "family1.eps",
+        "png": "family1.png",
+        "ancho": 1077,
+        "alto": 456
+    },
+    {
+        "archivo": "features.eps",
+        "png": "features.png",
+        "ancho": 787,
+        "alto": 737
+    },
+    {
+        "archivo": "feel-it2.eps",
+        "png": "feel-it2.png",
+        "ancho": 1042,
+        "alto": 911
+    },
+    {
+        "archivo": "figRobot1.eps",
+        "png": "figRobot1.png",
+        "ancho": 775,
+        "alto": 856
+    },
+    {
+        "archivo": "figRobot2.eps",
+        "png": "figRobot2.png",
+        "ancho": 1641,
+        "alto": 888
+    },
+    {
+        "archivo": "first.eps",
+        "png": "first.png",
+        "ancho": 869,
+        "alto": 713
+    },
+    {
+        "archivo": "flip_mosaic.eps",
+        "png": "flip_mosaic.png",
+        "ancho": 1613,
+        "alto": 282
+    },
+    {
+        "archivo": "flying-network-ai8.eps",
+        "png": "flying-network-ai8.png",
+        "ancho": 820,
+        "alto": 360
+    },
+    {
+        "archivo": "flying-network-copy.eps",
+        "png": "flying-network-copy.png",
+        "ancho": 820,
+        "alto": 360
+    },
+    {
+        "archivo": "flying-network.eps",
+        "png": "flying-network.png",
+        "ancho": 820,
+        "alto": 360
+    },
+    {
+        "archivo": "fol-model.eps",
+        "png": "fol-model.png",
+        "ancho": 1165,
+        "alto": 886
+    },
+    {
+        "archivo": "follows+entails.eps",
+        "png": "follows+entails.png",
+        "ancho": 1199,
+        "alto": 362
+    },
+    {
+        "archivo": "frame1.eps",
+        "png": "frame1.png",
+        "ancho": 390,
+        "alto": 365
+    },
+    {
+        "archivo": "frame120.eps",
+        "png": "frame120.png",
+        "ancho": 390,
+        "alto": 365
+    },
+    {
+        "archivo": "frame150.eps",
+        "png": "frame150.png",
+        "ancho": 390,
+        "alto": 365
+    },
+    {
+        "archivo": "frame60.eps",
+        "png": "frame60.png",
+        "ancho": 389,
+        "alto": 364
+    },
+    {
+        "archivo": "freitag.eps",
+        "png": "freitag.png",
+        "ancho": 1558,
+        "alto": 746
+    },
+    {
+        "archivo": "generic-ddn.eps",
+        "png": "generic-ddn.png",
+        "ancho": 1603,
+        "alto": 456
+    },
+    {
+        "archivo": "genetic.eps",
+        "png": "genetic.png",
+        "ancho": 1636,
+        "alto": 502
+    },
+    {
+        "archivo": "genghis.eps",
+        "png": "genghis.png",
+        "ancho": 764,
+        "alto": 475
+    },
+    {
+        "archivo": "geometric-scene.eps",
+        "png": "geometric-scene.png",
+        "ancho": 1276,
+        "alto": 644
+    },
+    {
+        "archivo": "goal-based-agent.eps",
+        "png": "goal-based-agent.png",
+        "ancho": 1143,
+        "alto": 726
+    },
+    {
+        "archivo": "graph-separation.eps",
+        "png": "graph-separation.png",
+        "ancho": 1532,
+        "alto": 509
+    },
+    {
+        "archivo": "greedy-progress.eps",
+        "png": "greedy-progress.png",
+        "ancho": 1641,
+        "alto": 1563
+    },
+    {
+        "archivo": "grid-mdp-figure.eps",
+        "png": "grid-mdp-figure.png",
+        "ancho": 1523,
+        "alto": 431
+    },
+    {
+        "archivo": "ground-plane.eps",
+        "png": "ground-plane.png",
+        "ancho": 700,
+        "alto": 402
+    },
+    {
+        "archivo": "hand-check.eps",
+        "png": "hand-check.png",
+        "ancho": 116,
+        "alto": 93
+    },
+    {
+        "archivo": "hand.eps",
+        "png": "hand.png",
+        "ancho": 116,
+        "alto": 93
+    },
+    {
+        "archivo": "handedness1.eps",
+        "png": "handedness1.png",
+        "ancho": 443,
+        "alto": 504
+    },
+    {
+        "archivo": "handedness2.eps",
+        "png": "handedness2.png",
+        "ancho": 443,
+        "alto": 504
+    },
+    {
+        "archivo": "handedness3.eps",
+        "png": "handedness3.png",
+        "ancho": 443,
+        "alto": 504
+    },
+    {
+        "archivo": "hard01c.eps",
+        "png": "hard01c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard04c.eps",
+        "png": "hard04c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard05c.eps",
+        "png": "hard05c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard1.eps",
+        "png": "hard1.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard10.eps",
+        "png": "hard10.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard10c.eps",
+        "png": "hard10c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard13.eps",
+        "png": "hard13.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard13c.eps",
+        "png": "hard13c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard14.eps",
+        "png": "hard14.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard14c.eps",
+        "png": "hard14c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard20.eps",
+        "png": "hard20.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard20c.eps",
+        "png": "hard20c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard34.eps",
+        "png": "hard34.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard34c.eps",
+        "png": "hard34c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard4.eps",
+        "png": "hard4.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard5.eps",
+        "png": "hard5.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard52.eps",
+        "png": "hard52.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard52c.eps",
+        "png": "hard52c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "hard53.eps",
+        "png": "hard53.png",
+        "ancho": 156,
+        "alto": 156
+    },
+    {
+        "archivo": "hard53c.eps",
+        "png": "hard53c.png",
+        "ancho": 233,
+        "alto": 233
+    },
+    {
+        "archivo": "heart-infl-diagram.eps",
+        "png": "heart-infl-diagram.png",
+        "ancho": 1604,
+        "alto": 1534
+    },
+    {
+        "archivo": "heliComposite.eps",
+        "png": "heliComposite.png",
+        "ancho": 1310,
+        "alto": 783
+    },
+    {
+        "archivo": "helicopter+robots.eps",
+        "png": "helicopter+robots.png",
+        "ancho": 1311,
+        "alto": 930
+    },
+    {
+        "archivo": "helpmate.eps",
+        "png": "helpmate.png",
+        "ancho": 578,
+        "alto": 727
+    },
+    {
+        "archivo": "hill-climbing.eps",
+        "png": "hill-climbing.png",
+        "ancho": 1269,
+        "alto": 717
+    },
+    {
+        "archivo": "hogfig.eps",
+        "png": "hogfig.png",
+        "ancho": 1371,
+        "alto": 663
+    },
+    {
+        "archivo": "honda_asimo_robot.eps",
+        "png": "honda_asimo_robot.png",
+        "ancho": 675,
+        "alto": 827
+    },
+    {
+        "archivo": "horizon-old.eps",
+        "png": "horizon-old.png",
+        "ancho": 660,
+        "alto": 737
+    },
+    {
+        "archivo": "horizon.eps",
+        "png": "horizon.png",
+        "ancho": 703,
+        "alto": 710
+    },
+    {
+        "archivo": "house-decomposition.eps",
+        "png": "house-decomposition.png",
+        "ancho": 1397,
+        "alto": 585
+    },
+    {
+        "archivo": "house-hybrid-htn.eps",
+        "png": "house-hybrid-htn.png",
+        "ancho": 1650,
+        "alto": 614
+    },
+    {
+        "archivo": "huffman-clowes.eps",
+        "png": "huffman-clowes.png",
+        "ancho": 1113,
+        "alto": 1127
+    },
+    {
+        "archivo": "human-eye.eps",
+        "png": "human-eye.png",
+        "ancho": 1095,
+        "alto": 735
+    },
+    {
+        "archivo": "icra.eps",
+        "png": "icra.png",
+        "ancho": 2550,
+        "alto": 3300
+    },
+    {
+        "archivo": "icra_cordless_phone-gray.eps",
+        "png": "icra_cordless_phone-gray.png",
+        "ancho": 600,
+        "alto": 450
+    },
+    {
+        "archivo": "icra_cordless_phone-gray2.eps",
+        "png": "icra_cordless_phone-gray2.png",
+        "ancho": 600,
+        "alto": 450
+    },
+    {
+        "archivo": "icra_cordless_phone-gray3.eps",
+        "png": "icra_cordless_phone-gray3.png",
+        "ancho": 813,
+        "alto": 610
+    },
+    {
+        "archivo": "ids-progress-noblack.eps",
+        "png": "ids-progress-noblack.png",
+        "ancho": 1636,
+        "alto": 1567
+    },
+    {
+        "archivo": "ids-progress.eps",
+        "png": "ids-progress.png",
+        "ancho": 1636,
+        "alto": 1567
+    },
+    {
+        "archivo": "ignore-del.eps",
+        "png": "ignore-del.png",
+        "ancho": 1501,
+        "alto": 723
+    },
+    {
+        "archivo": "illumination.eps",
+        "png": "illumination.png",
+        "ancho": 1414,
+        "alto": 826
+    },
+    {
+        "archivo": "induced-restaurant-tree.eps",
+        "png": "induced-restaurant-tree.png",
+        "ancho": 1112,
+        "alto": 676
+    },
+    {
+        "archivo": "inverse-proof.eps",
+        "png": "inverse-proof.png",
+        "ancho": 1619,
+        "alto": 633
+    },
+    {
+        "archivo": "ipem-blocks.eps",
+        "png": "ipem-blocks.png",
+        "ancho": 1515,
+        "alto": 320
+    },
+    {
+        "archivo": "ipem1.eps",
+        "png": "ipem1.png",
+        "ancho": 1642,
+        "alto": 285
+    },
+    {
+        "archivo": "ipem2.eps",
+        "png": "ipem2.png",
+        "ancho": 1642,
+        "alto": 285
+    },
+    {
+        "archivo": "ipem3.eps",
+        "png": "ipem3.png",
+        "ancho": 1642,
+        "alto": 280
+    },
+    {
+        "archivo": "ipem4.eps",
+        "png": "ipem4.png",
+        "ancho": 1646,
+        "alto": 244
+    },
+    {
+        "archivo": "ipem5.eps",
+        "png": "ipem5.png",
+        "ancho": 1650,
+        "alto": 282
+    },
+    {
+        "archivo": "ipem6.eps",
+        "png": "ipem6.png",
+        "ancho": 1650,
+        "alto": 244
+    },
+    {
+        "archivo": "isha.eps",
+        "png": "isha.png",
+        "ancho": 1222,
+        "alto": 713
+    },
+    {
+        "archivo": "jobshop-cpm.eps",
+        "png": "jobshop-cpm.png",
+        "ancho": 1304,
+        "alto": 998
+    },
+    {
+        "archivo": "jobshop-resources.eps",
+        "png": "jobshop-resources.png",
+        "ancho": 1601,
+        "alto": 352
+    },
+    {
+        "archivo": "john-mary-semantics.eps",
+        "png": "john-mary-semantics.png",
+        "ancho": 889,
+        "alto": 513
+    },
+    {
+        "archivo": "JudeaPearl.eps",
+        "png": "JudeaPearl.png",
+        "ancho": 1500,
+        "alto": 2100
+    },
+    {
+        "archivo": "kalman-2D.eps",
+        "png": "kalman-2D.png",
+        "ancho": 1342,
+        "alto": 704
+    },
+    {
+        "archivo": "kalman-bird1.eps",
+        "png": "kalman-bird1.png",
+        "ancho": 723,
+        "alto": 662
+    },
+    {
+        "archivo": "kalman-bird2.eps",
+        "png": "kalman-bird2.png",
+        "ancho": 728,
+        "alto": 666
+    },
+    {
+        "archivo": "kalman-filtering.eps",
+        "png": "kalman-filtering.png",
+        "ancho": 599,
+        "alto": 621
+    },
+    {
+        "archivo": "kalman-network.eps",
+        "png": "kalman-network.png",
+        "ancho": 823,
+        "alto": 548
+    },
+    {
+        "archivo": "kalman-smoothing.eps",
+        "png": "kalman-smoothing.png",
+        "ancho": 661,
+        "alto": 556
+    },
+    {
+        "archivo": "kalman.eps",
+        "png": "kalman.png",
+        "ancho": 1348,
+        "alto": 692
+    },
+    {
+        "archivo": "keyboard-check.eps",
+        "png": "keyboard-check.png",
+        "ancho": 160,
+        "alto": 70
+    },
+    {
+        "archivo": "keyboard.eps",
+        "png": "keyboard.png",
+        "ancho": 160,
+        "alto": 70
+    },
+    {
+        "archivo": "kindergarten-vacuum-filtering.eps",
+        "png": "kindergarten-vacuum-filtering.png",
+        "ancho": 1642,
+        "alto": 468
+    },
+    {
+        "archivo": "kriegspiel-krk.eps",
+        "png": "kriegspiel-krk.png",
+        "ancho": 1222,
+        "alto": 1192
+    },
+    {
+        "archivo": "l-shape.eps",
+        "png": "l-shape.png",
+        "ancho": 782,
+        "alto": 763
+    },
+    {
+        "archivo": "lambert.eps",
+        "png": "lambert.png",
+        "ancho": 1049,
+        "alto": 582
+    },
+    {
+        "archivo": "lane-marker.eps",
+        "png": "lane-marker.png",
+        "ancho": 1078,
+        "alto": 809
+    },
+    {
+        "archivo": "learning-agent.eps",
+        "png": "learning-agent.png",
+        "ancho": 1143,
+        "alto": 797
+    },
+    {
+        "archivo": "left-corner.eps",
+        "png": "left-corner.png",
+        "ancho": 1019,
+        "alto": 676
+    },
+    {
+        "archivo": "lens-eye.eps",
+        "png": "lens-eye.png",
+        "ancho": 1610,
+        "alto": 589
+    },
+    {
+        "archivo": "liberty-new.eps",
+        "png": "liberty-new.png",
+        "ancho": 1276,
+        "alto": 716
+    },
+    {
+        "archivo": "lightricegrad.eps",
+        "png": "lightricegrad.png",
+        "ancho": 774,
+        "alto": 774
+    },
+    {
+        "archivo": "line-game4.eps",
+        "png": "line-game4.png",
+        "ancho": 447,
+        "alto": 171
+    },
+    {
+        "archivo": "local-sensing-vacuum-and-or.eps",
+        "png": "local-sensing-vacuum-and-or.png",
+        "ancho": 1083,
+        "alto": 660
+    },
+    {
+        "archivo": "localization-figures-a.eps",
+        "png": "localization-figures-a.png",
+        "ancho": 1478,
+        "alto": 1044
+    },
+    {
+        "archivo": "localization-figures-b.eps",
+        "png": "localization-figures-b.png",
+        "ancho": 1480,
+        "alto": 1059
+    },
+    {
+        "archivo": "lowefig.eps",
+        "png": "lowefig.png",
+        "ancho": 1510,
+        "alto": 456
+    },
+    {
+        "archivo": "lrta-progress.eps",
+        "png": "lrta-progress.png",
+        "ancho": 1605,
+        "alto": 808
+    },
+    {
+        "archivo": "magi.eps",
+        "png": "magi.png",
+        "ancho": 1394,
+        "alto": 908
+    },
+    {
+        "archivo": "markov-blanket.eps",
+        "png": "markov-blanket.png",
+        "ancho": 698,
+        "alto": 652
+    },
+    {
+        "archivo": "markov-processes.eps",
+        "png": "markov-processes.png",
+        "ancho": 1155,
+        "alto": 301
+    },
+    {
+        "archivo": "maze-3x3.eps",
+        "png": "maze-3x3.png",
+        "ancho": 446,
+        "alto": 470
+    },
+    {
+        "archivo": "McCarthy.eps",
+        "png": "McCarthy.png",
+        "ancho": 2188,
+        "alto": 2188
+    },
+    {
+        "archivo": "memory-agent.eps",
+        "png": "memory-agent.png",
+        "ancho": 1525,
+        "alto": 608
+    },
+    {
+        "archivo": "mine-data.eps",
+        "png": "mine-data.png",
+        "ancho": 786,
+        "alto": 503
+    },
+    {
+        "archivo": "mine-robot.eps",
+        "png": "mine-robot.png",
+        "ancho": 786,
+        "alto": 503
+    },
+    {
+        "archivo": "minimax-error.eps",
+        "png": "minimax-error.png",
+        "ancho": 1117,
+        "alto": 468
+    },
+    {
+        "archivo": "minimax.eps",
+        "png": "minimax.png",
+        "ancho": 1131,
+        "alto": 501
+    },
+    {
+        "archivo": "minimax3.eps",
+        "png": "minimax3.png",
+        "ancho": 1391,
+        "alto": 519
+    },
+    {
+        "archivo": "mixture-networks.eps",
+        "png": "mixture-networks.png",
+        "ancho": 1148,
+        "alto": 645
+    },
+    {
+        "archivo": "ml-networks.eps",
+        "png": "ml-networks.png",
+        "ancho": 1034,
+        "alto": 646
+    },
+    {
+        "archivo": "model-based-reflex-agent.eps",
+        "png": "model-based-reflex-agent.png",
+        "ancho": 1138,
+        "alto": 727
+    },
+    {
+        "archivo": "morra-trees.eps",
+        "png": "morra-trees.png",
+        "ancho": 1376,
+        "alto": 1668
+    },
+    {
+        "archivo": "mt-alignment.eps",
+        "png": "mt-alignment.png",
+        "ancho": 3354,
+        "alto": 1271
+    },
+    {
+        "archivo": "mt-alignment3.eps",
+        "png": "mt-alignment3.png",
+        "ancho": 1329,
+        "alto": 498
+    },
+    {
+        "archivo": "mt-interlingua.eps",
+        "png": "mt-interlingua.png",
+        "ancho": 1620,
+        "alto": 612
+    },
+    {
+        "archivo": "munich_ORsmall.eps",
+        "png": "munich_ORsmall.png",
+        "ancho": 711,
+        "alto": 480
+    },
+    {
+        "archivo": "nachi.eps",
+        "png": "nachi.png",
+        "ancho": 675,
+        "alto": 818
+    },
+    {
+        "archivo": "neural-net.eps",
+        "png": "neural-net.png",
+        "ancho": 1276,
+        "alto": 460
+    },
+    {
+        "archivo": "neurogame.eps",
+        "png": "neurogame.png",
+        "ancho": 3617,
+        "alto": 2713
+    },
+    {
+        "archivo": "neuron-unit.eps",
+        "png": "neuron-unit.png",
+        "ancho": 1104,
+        "alto": 443
+    },
+    {
+        "archivo": "neuron.eps",
+        "png": "neuron.png",
+        "ancho": 1281,
+        "alto": 764
+    },
+    {
+        "archivo": "new-14-16-1.eps",
+        "png": "new-14-16-1.png",
+        "ancho": 1646,
+        "alto": 606
+    },
+    {
+        "archivo": "new-14-16-2.eps",
+        "png": "new-14-16-2.png",
+        "ancho": 1649,
+        "alto": 473
+    },
+    {
+        "archivo": "new-14-16-3.eps",
+        "png": "new-14-16-3.png",
+        "ancho": 1628,
+        "alto": 474
+    },
+    {
+        "archivo": "new-14-18.eps",
+        "png": "new-14-18.png",
+        "ancho": 1304,
+        "alto": 441
+    },
+    {
+        "archivo": "new-predicate.eps",
+        "png": "new-predicate.png",
+        "ancho": 1415,
+        "alto": 275
+    },
+    {
+        "archivo": "NewellSimon.eps",
+        "png": "NewellSimon.png",
+        "ancho": 2083,
+        "alto": 1554
+    },
+    {
+        "archivo": "NewellSimonMcCarthy.eps",
+        "png": "NewellSimonMcCarthy.png",
+        "ancho": 1502,
+        "alto": 724
+    },
+    {
+        "archivo": "newpinhole.eps",
+        "png": "newpinhole.png",
+        "ancho": 2390,
+        "alto": 847
+    },
+    {
+        "archivo": "nn-logical.eps",
+        "png": "nn-logical.png",
+        "ancho": 1328,
+        "alto": 393
+    },
+    {
+        "archivo": "no-figure.eps",
+        "png": "no-figure.png",
+        "ancho": 1346,
+        "alto": 604
+    },
+    {
+        "archivo": "nondescendants.eps",
+        "png": "nondescendants.png",
+        "ancho": 785,
+        "alto": 641
+    },
+    {
+        "archivo": "nonparametric5.eps",
+        "png": "nonparametric5.png",
+        "ancho": 1382,
+        "alto": 1062
+    },
+    {
+        "archivo": "parse-pcfg.eps",
+        "png": "parse-pcfg.png",
+        "ancho": 603,
+        "alto": 395
+    },
+    {
+        "archivo": "parse2.eps",
+        "png": "parse2.png",
+        "ancho": 1389,
+        "alto": 887
+    },
+    {
+        "archivo": "parse5.eps",
+        "png": "parse5.png",
+        "ancho": 1390,
+        "alto": 845
+    },
+    {
+        "archivo": "pdb1omd.eps",
+        "png": "pdb1omd.png",
+        "ancho": 778,
+        "alto": 924
+    },
+    {
+        "archivo": "pdb2mhr.eps",
+        "png": "pdb2mhr.png",
+        "ancho": 736,
+        "alto": 1075
+    },
+    {
+        "archivo": "peg-in-hole-step1.eps",
+        "png": "peg-in-hole-step1.png",
+        "ancho": 900,
+        "alto": 457
+    },
+    {
+        "archivo": "peg-in-hole-step2.eps",
+        "png": "peg-in-hole-step2.png",
+        "ancho": 898,
+        "alto": 424
+    },
+    {
+        "archivo": "peg-in-hole.eps",
+        "png": "peg-in-hole.png",
+        "ancho": 897,
+        "alto": 451
+    },
+    {
+        "archivo": "perceptron-linear.eps",
+        "png": "perceptron-linear.png",
+        "ancho": 1328,
+        "alto": 465
+    },
+    {
+        "archivo": "perceptron-model.eps",
+        "png": "perceptron-model.png",
+        "ancho": 744,
+        "alto": 425
+    },
+    {
+        "archivo": "perceptron.eps",
+        "png": "perceptron.png",
+        "ancho": 426,
+        "alto": 575
+    },
+    {
+        "archivo": "pinhole.eps",
+        "png": "pinhole.png",
+        "ancho": 1265,
+        "alto": 670
+    },
+    {
+        "archivo": "pixel-values.eps",
+        "png": "pixel-values.png",
+        "ancho": 522,
+        "alto": 522
+    },
+    {
+        "archivo": "pixels-12x12.eps",
+        "png": "pixels-12x12.png",
+        "ancho": 524,
+        "alto": 524
+    },
+    {
+        "archivo": "pl-horn-example.eps",
+        "png": "pl-horn-example.png",
+        "ancho": 415,
+        "alto": 670
+    },
+    {
+        "archivo": "plan-agent.eps",
+        "png": "plan-agent.png",
+        "ancho": 6421,
+        "alto": 4508
+    },
+    {
+        "archivo": "plan-repair.eps",
+        "png": "plan-repair.png",
+        "ancho": 1071,
+        "alto": 516
+    },
+    {
+        "archivo": "politics.eps",
+        "png": "politics.png",
+        "ancho": 643,
+        "alto": 659
+    },
+    {
+        "archivo": "pomdp-progress.eps",
+        "png": "pomdp-progress.png",
+        "ancho": 1642,
+        "alto": 334
+    },
+    {
+        "archivo": "pomdp-tree.eps",
+        "png": "pomdp-tree.png",
+        "ancho": 1290,
+        "alto": 811
+    },
+    {
+        "archivo": "possible-worlds.eps",
+        "png": "possible-worlds.png",
+        "ancho": 7121,
+        "alto": 2158
+    },
+    {
+        "archivo": "possible-worlds2.eps",
+        "png": "possible-worlds2.png",
+        "ancho": 1592,
+        "alto": 1068
+    },
+    {
+        "archivo": "predator.eps",
+        "png": "predator.png",
+        "ancho": 771,
+        "alto": 573
+    },
+    {
+        "archivo": "president-usa.eps",
+        "png": "president-usa.png",
+        "ancho": 1307,
+        "alto": 682
+    },
+    {
+        "archivo": "pretex-simplify-proof2.eps",
+        "png": "pretex-simplify-proof2.png",
+        "ancho": 1194,
+        "alto": 1087
+    },
+    {
+        "archivo": "prolog-ribbon.eps",
+        "png": "prolog-ribbon.png",
+        "ancho": 1472,
+        "alto": 364
+    },
+    {
+        "archivo": "proof-abc1.eps",
+        "png": "proof-abc1.png",
+        "ancho": 789,
+        "alto": 555
+    },
+    {
+        "archivo": "proof-abc2.eps",
+        "png": "proof-abc2.png",
+        "ancho": 683,
+        "alto": 586
+    },
+    {
+        "archivo": "pruning.eps",
+        "png": "pruning.png",
+        "ancho": 1003,
+        "alto": 564
+    },
+    {
+        "archivo": "pruning2.eps",
+        "png": "pruning2.png",
+        "ancho": 1629,
+        "alto": 892
+    },
+    {
+        "archivo": "ptype_1.eps",
+        "png": "ptype_1.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_10.eps",
+        "png": "ptype_10.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_11.eps",
+        "png": "ptype_11.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_12.eps",
+        "png": "ptype_12.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_2.eps",
+        "png": "ptype_2.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_3.eps",
+        "png": "ptype_3.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_4.eps",
+        "png": "ptype_4.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_5.eps",
+        "png": "ptype_5.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_6.eps",
+        "png": "ptype_6.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_7.eps",
+        "png": "ptype_7.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_8.eps",
+        "png": "ptype_8.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "ptype_9.eps",
+        "png": "ptype_9.png",
+        "ancho": 396,
+        "alto": 396
+    },
+    {
+        "archivo": "pursuit-evasion-game.eps",
+        "png": "pursuit-evasion-game.png",
+        "ancho": 1501,
+        "alto": 1203
+    },
+    {
+        "archivo": "quicksand.eps",
+        "png": "quicksand.png",
+        "ancho": 1148,
+        "alto": 213
+    },
+    {
+        "archivo": "R317-SR4000-CW.eps",
+        "png": "R317-SR4000-CW.png",
+        "ancho": 630,
+        "alto": 630
+    },
+    {
+        "archivo": "race12.eps",
+        "png": "race12.png",
+        "ancho": 720,
+        "alto": 480
+    },
+    {
+        "archivo": "raibert-1leg.eps",
+        "png": "raibert-1leg.png",
+        "ancho": 614,
+        "alto": 953
+    },
+    {
+        "archivo": "rain-clustering1.eps",
+        "png": "rain-clustering1.png",
+        "ancho": 784,
+        "alto": 613
+    },
+    {
+        "archivo": "rain-clustering2.eps",
+        "png": "rain-clustering2.png",
+        "ancho": 787,
+        "alto": 501
+    },
+    {
+        "archivo": "range-scan-model.eps",
+        "png": "range-scan-model.png",
+        "ancho": 788,
+        "alto": 525
+    },
+    {
+        "archivo": "rbfs-progress.eps",
+        "png": "rbfs-progress.png",
+        "ancho": 1473,
+        "alto": 1620
+    },
+    {
+        "archivo": "reachable-sets.eps",
+        "png": "reachable-sets.png",
+        "ancho": 1540,
+        "alto": 766
+    },
+    {
+        "archivo": "resolution-completeness.eps",
+        "png": "resolution-completeness.png",
+        "ancho": 1267,
+        "alto": 657
+    },
+    {
+        "archivo": "restaurant-nn.eps",
+        "png": "restaurant-nn.png",
+        "ancho": 1480,
+        "alto": 680
+    },
+    {
+        "archivo": "restaurant-stub.eps",
+        "png": "restaurant-stub.png",
+        "ancho": 1557,
+        "alto": 708
+    },
+    {
+        "archivo": "restaurant-tree.eps",
+        "png": "restaurant-tree.png",
+        "ancho": 1204,
+        "alto": 785
+    },
+    {
+        "archivo": "ribbon+grid.eps",
+        "png": "ribbon+grid.png",
+        "ancho": 1566,
+        "alto": 508
+    },
+    {
+        "archivo": "ridge.eps",
+        "png": "ridge.png",
+        "ancho": 715,
+        "alto": 788
+    },
+    {
+        "archivo": "robocup-bigdog.eps",
+        "png": "robocup-bigdog.png",
+        "ancho": 1524,
+        "alto": 821
+    },
+    {
+        "archivo": "robocup.eps",
+        "png": "robocup.png",
+        "ancho": 916,
+        "alto": 953
+    },
+    {
+        "archivo": "robocup3.eps",
+        "png": "robocup3.png",
+        "ancho": 1788,
+        "alto": 1767
+    },
+    {
+        "archivo": "robocup5.eps",
+        "png": "robocup5.png",
+        "ancho": 979,
+        "alto": 900
+    },
+    {
+        "archivo": "robot-dbn1.eps",
+        "png": "robot-dbn1.png",
+        "ancho": 565,
+        "alto": 658
+    },
+    {
+        "archivo": "robot0124bw.eps",
+        "png": "robot0124bw.png",
+        "ancho": 1036,
+        "alto": 698
+    },
+    {
+        "archivo": "robotics-ddn.eps",
+        "png": "robotics-ddn.png",
+        "ancho": 968,
+        "alto": 512
+    },
+    {
+        "archivo": "robotics-pic1.eps",
+        "png": "robotics-pic1.png",
+        "ancho": 981,
+        "alto": 488
+    },
+    {
+        "archivo": "robotics-pic2.eps",
+        "png": "robotics-pic2.png",
+        "ancho": 791,
+        "alto": 612
+    },
+    {
+        "archivo": "robotics-pic3.eps",
+        "png": "robotics-pic3.png",
+        "ancho": 799,
+        "alto": 458
+    },
+    {
+        "archivo": "robotics-pic4.eps",
+        "png": "robotics-pic4.png",
+        "ancho": 796,
+        "alto": 494
+    },
+    {
+        "archivo": "robotics-pic5.eps",
+        "png": "robotics-pic5.png",
+        "ancho": 775,
+        "alto": 504
+    },
+    {
+        "archivo": "robotics-pic6.eps",
+        "png": "robotics-pic6.png",
+        "ancho": 1322,
+        "alto": 363
+    },
+    {
+        "archivo": "robotics-pic7.eps",
+        "png": "robotics-pic7.png",
+        "ancho": 1275,
+        "alto": 607
+    },
+    {
+        "archivo": "RobotPlugInSkin.eps",
+        "png": "RobotPlugInSkin.png",
+        "ancho": 616,
+        "alto": 953
+    },
+    {
+        "archivo": "roll_mosaic.eps",
+        "png": "roll_mosaic.png",
+        "ancho": 4000,
+        "alto": 800
+    },
+    {
+        "archivo": "romania-distances.eps",
+        "png": "romania-distances.png",
+        "ancho": 1634,
+        "alto": 985
+    },
+    {
+        "archivo": "romania-graph-search.eps",
+        "png": "romania-graph-search.png",
+        "ancho": 1515,
+        "alto": 324
+    },
+    {
+        "archivo": "romania-sld.eps",
+        "png": "romania-sld.png",
+        "ancho": 990,
+        "alto": 445
+    },
+    {
+        "archivo": "romania-subgraph.eps",
+        "png": "romania-subgraph.png",
+        "ancho": 771,
+        "alto": 528
+    },
+    {
+        "archivo": "roomba1.eps",
+        "png": "roomba1.png",
+        "ancho": 731,
+        "alto": 610
+    },
+    {
+        "archivo": "Rubic.00.eps",
+        "png": "Rubic.00.png",
+        "ancho": 527,
+        "alto": 494
+    },
+    {
+        "archivo": "Rubic.19.eps",
+        "png": "Rubic.19.png",
+        "ancho": 524,
+        "alto": 491
+    },
+    {
+        "archivo": "Rubic.flow.eps",
+        "png": "Rubic.flow.png",
+        "ancho": 512,
+        "alto": 482
+    },
+    {
+        "archivo": "sat-solvability.eps",
+        "png": "sat-solvability.png",
+        "ancho": 5829,
+        "alto": 3433
+    },
+    {
+        "archivo": "screen.eps",
+        "png": "screen.png",
+        "ancho": 263,
+        "alto": 2668
+    },
+    {
+        "archivo": "search-map.eps",
+        "png": "search-map.png",
+        "ancho": 1466,
+        "alto": 1224
+    },
+    {
+        "archivo": "second.eps",
+        "png": "second.png",
+        "ancho": 869,
+        "alto": 721
+    },
+    {
+        "archivo": "semantic-network.eps",
+        "png": "semantic-network.png",
+        "ancho": 751,
+        "alto": 523
+    },
+    {
+        "archivo": "sequential-decision-policies.eps",
+        "png": "sequential-decision-policies.png",
+        "ancho": 1619,
+        "alto": 774
+    },
+    {
+        "archivo": "sequential-decision-values.eps",
+        "png": "sequential-decision-values.png",
+        "ancho": 742,
+        "alto": 588
+    },
+    {
+        "archivo": "sequential-decision-world.eps",
+        "png": "sequential-decision-world.png",
+        "ancho": 988,
+        "alto": 506
+    },
+    {
+        "archivo": "shakey2.eps",
+        "png": "shakey2.png",
+        "ancho": 1138,
+        "alto": 1363
+    },
+    {
+        "archivo": "shoes-socks3.eps",
+        "png": "shoes-socks3.png",
+        "ancho": 1641,
+        "alto": 1037
+    },
+    {
+        "archivo": "sick.eps",
+        "png": "sick.png",
+        "ancho": 493,
+        "alto": 650
+    },
+    {
+        "archivo": "simple-reflex-agent.eps",
+        "png": "simple-reflex-agent.png",
+        "ancho": 1142,
+        "alto": 724
+    },
+    {
+        "archivo": "simplify-proof2.eps",
+        "png": "simplify-proof2.png",
+        "ancho": 1194,
+        "alto": 1094
+    },
+    {
+        "archivo": "situations.eps",
+        "png": "situations.png",
+        "ancho": 1312,
+        "alto": 971
+    },
+    {
+        "archivo": "slippery-vacuum-loop-plan.eps",
+        "png": "slippery-vacuum-loop-plan.png",
+        "ancho": 971,
+        "alto": 813
+    },
+    {
+        "archivo": "smoothing-dbn.eps",
+        "png": "smoothing-dbn.png",
+        "ancho": 1151,
+        "alto": 257
+    },
+    {
+        "archivo": "Sojourner.eps",
+        "png": "Sojourner.png",
+        "ancho": 764,
+        "alto": 573
+    },
+    {
+        "archivo": "sr-acoustic-frames.eps",
+        "png": "sr-acoustic-frames.png",
+        "ancho": 1151,
+        "alto": 469
+    },
+    {
+        "archivo": "sr-hmm.eps",
+        "png": "sr-hmm.png",
+        "ancho": 959,
+        "alto": 687
+    },
+    {
+        "archivo": "sr-tomato.eps",
+        "png": "sr-tomato.png",
+        "ancho": 1314,
+        "alto": 924
+    },
+    {
+        "archivo": "stanford-arm.eps",
+        "png": "stanford-arm.png",
+        "ancho": 977,
+        "alto": 433
+    },
+    {
+        "archivo": "stanley-in-race.eps",
+        "png": "stanley-in-race.png",
+        "ancho": 6256,
+        "alto": 3016
+    },
+    {
+        "archivo": "stanley-processes.eps",
+        "png": "stanley-processes.png",
+        "ancho": 1581,
+        "alto": 1186
+    },
+    {
+        "archivo": "stapler1+square.eps",
+        "png": "stapler1+square.png",
+        "ancho": 527,
+        "alto": 395
+    },
+    {
+        "archivo": "stapler1-test.eps",
+        "png": "stapler1-test.png",
+        "ancho": 787,
+        "alto": 590
+    },
+    {
+        "archivo": "stapler1.corners-test.eps",
+        "png": "stapler1.corners-test.png",
+        "ancho": 784,
+        "alto": 588
+    },
+    {
+        "archivo": "stapler1.edge-test.eps",
+        "png": "stapler1.edge-test.png",
+        "ancho": 787,
+        "alto": 590
+    },
+    {
+        "archivo": "stapler1.hyp-test.eps",
+        "png": "stapler1.hyp-test.png",
+        "ancho": 784,
+        "alto": 588
+    },
+    {
+        "archivo": "state-vs-node.eps",
+        "png": "state-vs-node.png",
+        "ancho": 957,
+        "alto": 577
+    },
+    {
+        "archivo": "stereo-pyramid.eps",
+        "png": "stereo-pyramid.png",
+        "ancho": 1200,
+        "alto": 844
+    },
+    {
+        "archivo": "stereopsis.eps",
+        "png": "stereopsis.png",
+        "ancho": 1408,
+        "alto": 592
+    },
+    {
+        "archivo": "strict-dominance.eps",
+        "png": "strict-dominance.png",
+        "ancho": 1345,
+        "alto": 586
+    },
+    {
+        "archivo": "student-rpm.eps",
+        "png": "student-rpm.png",
+        "ancho": 1644,
+        "alto": 592
+    },
+    {
+        "archivo": "student-rpm2.eps",
+        "png": "student-rpm2.png",
+        "ancho": 1155,
+        "alto": 471
+    },
+    {
+        "archivo": "subcat.eps",
+        "png": "subcat.png",
+        "ancho": 983,
+        "alto": 828
+    },
+    {
+        "archivo": "subsumption-lattices.eps",
+        "png": "subsumption-lattices.png",
+        "ancho": 1634,
+        "alto": 329
+    },
+    {
+        "archivo": "sudoku.eps",
+        "png": "sudoku.png",
+        "ancho": 1625,
+        "alto": 813
+    },
+    {
+        "archivo": "sussman-anomaly.eps",
+        "png": "sussman-anomaly.png",
+        "ancho": 1215,
+        "alto": 502
+    },
+    {
+        "archivo": "svd62d63.eps",
+        "png": "svd62d63.png",
+        "ancho": 661,
+        "alto": 987
+    },
+    {
+        "archivo": "switching-kf.eps",
+        "png": "switching-kf.png",
+        "ancho": 793,
+        "alto": 535
+    },
+    {
+        "archivo": "telescope-nets.eps",
+        "png": "telescope-nets.png",
+        "ancho": 1655,
+        "alto": 584
+    },
+    {
+        "archivo": "third.eps",
+        "png": "third.png",
+        "ancho": 869,
+        "alto": 721
+    },
+    {
+        "archivo": "tictactoe.eps",
+        "png": "tictactoe.png",
+        "ancho": 1469,
+        "alto": 1002
+    },
+    {
+        "archivo": "time-intervals.eps",
+        "png": "time-intervals.png",
+        "ancho": 915,
+        "alto": 699
+    },
+    {
+        "archivo": "tire-empty.eps",
+        "png": "tire-empty.png",
+        "ancho": 1475,
+        "alto": 78
+    },
+    {
+        "archivo": "tire-graphplan2.eps",
+        "png": "tire-graphplan2.png",
+        "ancho": 1637,
+        "alto": 654
+    },
+    {
+        "archivo": "tire0.eps",
+        "png": "tire0.png",
+        "ancho": 1475,
+        "alto": 186
+    },
+    {
+        "archivo": "tire1.eps",
+        "png": "tire1.png",
+        "ancho": 1652,
+        "alto": 441
+    },
+    {
+        "archivo": "tire2.eps",
+        "png": "tire2.png",
+        "ancho": 1479,
+        "alto": 288
+    },
+    {
+        "archivo": "topview-dots.eps",
+        "png": "topview-dots.png",
+        "ancho": 785,
+        "alto": 739
+    },
+    {
+        "archivo": "topview-real.eps",
+        "png": "topview-real.png",
+        "ancho": 788,
+        "alto": 739
+    },
+    {
+        "archivo": "tracker.eps",
+        "png": "tracker.png",
+        "ancho": 2146,
+        "alto": 1399
+    },
+    {
+        "archivo": "traffic-downstream.eps",
+        "png": "traffic-downstream.png",
+        "ancho": 753,
+        "alto": 600
+    },
+    {
+        "archivo": "traffic-upstream.eps",
+        "png": "traffic-upstream.png",
+        "ancho": 751,
+        "alto": 600
+    },
+    {
+        "archivo": "tree-csp.eps",
+        "png": "tree-csp.png",
+        "ancho": 1541,
+        "alto": 360
+    },
+    {
+        "archivo": "tree-game.eps",
+        "png": "tree-game.png",
+        "ancho": 3673,
+        "alto": 1050
+    },
+    {
+        "archivo": "tree-game1.eps",
+        "png": "tree-game1.png",
+        "ancho": 624,
+        "alto": 261
+    },
+    {
+        "archivo": "tree-game2.eps",
+        "png": "tree-game2.png",
+        "ancho": 931,
+        "alto": 812
+    },
+    {
+        "archivo": "tree-game3.eps",
+        "png": "tree-game3.png",
+        "ancho": 931,
+        "alto": 812
+    },
+    {
+        "archivo": "trihedral.eps",
+        "png": "trihedral.png",
+        "ancho": 1202,
+        "alto": 773
+    },
+    {
+        "archivo": "two-plan-searches.eps",
+        "png": "two-plan-searches.png",
+        "ancho": 1441,
+        "alto": 886
+    },
+    {
+        "archivo": "umbrella-1slice.eps",
+        "png": "umbrella-1slice.png",
+        "ancho": 729,
+        "alto": 549
+    },
+    {
+        "archivo": "umbrella-dbn.eps",
+        "png": "umbrella-dbn.png",
+        "ancho": 1143,
+        "alto": 524
+    },
+    {
+        "archivo": "umbrella-particle.eps",
+        "png": "umbrella-particle.png",
+        "ancho": 1138,
+        "alto": 407
+    },
+    {
+        "archivo": "umbrella-paths.eps",
+        "png": "umbrella-paths.png",
+        "ancho": 1154,
+        "alto": 595
+    },
+    {
+        "archivo": "utility-based-agent.eps",
+        "png": "utility-based-agent.png",
+        "ancho": 1136,
+        "alto": 725
+    },
+    {
+        "archivo": "utility-curve.eps",
+        "png": "utility-curve.png",
+        "ancho": 1673,
+        "alto": 683
+    },
+    {
+        "archivo": "vacuum-cond-plan.eps",
+        "png": "vacuum-cond-plan.png",
+        "ancho": 1304,
+        "alto": 817
+    },
+    {
+        "archivo": "vacuum-loop-plan.eps",
+        "png": "vacuum-loop-plan.png",
+        "ancho": 1154,
+        "alto": 468
+    },
+    {
+        "archivo": "vacuum-po.eps",
+        "png": "vacuum-po.png",
+        "ancho": 1617,
+        "alto": 1370
+    },
+    {
+        "archivo": "vacuum-prediction-update.eps",
+        "png": "vacuum-prediction-update.png",
+        "ancho": 1092,
+        "alto": 1195
+    },
+    {
+        "archivo": "vacuum-prediction.eps",
+        "png": "vacuum-prediction.png",
+        "ancho": 1319,
+        "alto": 565
+    },
+    {
+        "archivo": "vacuum2-environment.eps",
+        "png": "vacuum2-environment.png",
+        "ancho": 820,
+        "alto": 414
+    },
+    {
+        "archivo": "vacuum2-sets.eps",
+        "png": "vacuum2-sets.png",
+        "ancho": 1634,
+        "alto": 1351
+    },
+    {
+        "archivo": "vacuum2-state-space.eps",
+        "png": "vacuum2-state-space.png",
+        "ancho": 1627,
+        "alto": 795
+    },
+    {
+        "archivo": "vacuum2-states.eps",
+        "png": "vacuum2-states.png",
+        "ancho": 856,
+        "alto": 758
+    },
+    {
+        "archivo": "version-space.eps",
+        "png": "version-space.png",
+        "ancho": 1082,
+        "alto": 934
+    },
+    {
+        "archivo": "vertex-a.eps",
+        "png": "vertex-a.png",
+        "ancho": 1178,
+        "alto": 211
+    },
+    {
+        "archivo": "visimg1.eps",
+        "png": "visimg1.png",
+        "ancho": 508,
+        "alto": 381
+    },
+    {
+        "archivo": "visimg2.eps",
+        "png": "visimg2.png",
+        "ancho": 512,
+        "alto": 382
+    },
+    {
+        "archivo": "visimg3.eps",
+        "png": "visimg3.png",
+        "ancho": 511,
+        "alto": 381
+    },
+    {
+        "archivo": "vision-nqe-2383.eps",
+        "png": "vision-nqe-2383.png",
+        "ancho": 1280,
+        "alto": 960
+    },
+    {
+        "archivo": "vision-nqe-2392.eps",
+        "png": "vision-nqe-2392.png",
+        "ancho": 1280,
+        "alto": 960
+    },
+    {
+        "archivo": "vision-nqe-2399.eps",
+        "png": "vision-nqe-2399.png",
+        "ancho": 1280,
+        "alto": 960
+    },
+    {
+        "archivo": "vision-nqe-2402.eps",
+        "png": "vision-nqe-2402.png",
+        "ancho": 1280,
+        "alto": 960
+    },
+    {
+        "archivo": "vision-nqe-2407.eps",
+        "png": "vision-nqe-2407.png",
+        "ancho": 1280,
+        "alto": 960
+    },
+    {
+        "archivo": "vision-nqe-2419.eps",
+        "png": "vision-nqe-2419.png",
+        "ancho": 1280,
+        "alto": 960
+    },
+    {
+        "archivo": "vs-proof.eps",
+        "png": "vs-proof.png",
+        "ancho": 749,
+        "alto": 543
+    },
+    {
+        "archivo": "wall-chair2.eps",
+        "png": "wall-chair2.png",
+        "ancho": 631,
+        "alto": 630
+    },
+    {
+        "archivo": "wall_chair2.eps",
+        "png": "wall_chair2.png",
+        "ancho": 984,
+        "alto": 1115
+    },
+    {
+        "archivo": "weather-independence.eps",
+        "png": "weather-independence.png",
+        "ancho": 787,
+        "alto": 629
+    },
+    {
+        "archivo": "wiggly-belief-state.eps",
+        "png": "wiggly-belief-state.png",
+        "ancho": 1021,
+        "alto": 796
+    },
+    {
+        "archivo": "wumpus-circuit1.eps",
+        "png": "wumpus-circuit1.png",
+        "ancho": 1244,
+        "alto": 710
+    },
+    {
+        "archivo": "wumpus-circuit2.eps",
+        "png": "wumpus-circuit2.png",
+        "ancho": 1244,
+        "alto": 764
+    },
+    {
+        "archivo": "wumpus-entailment.eps",
+        "png": "wumpus-entailment.png",
+        "ancho": 793,
+        "alto": 615
+    },
+    {
+        "archivo": "wumpus-fringe-models.eps",
+        "png": "wumpus-fringe-models.png",
+        "ancho": 1641,
+        "alto": 384
+    },
+    {
+        "archivo": "wumpus-nonentailment.eps",
+        "png": "wumpus-nonentailment.png",
+        "ancho": 790,
+        "alto": 598
+    },
+    {
+        "archivo": "wumpus-resolution.eps",
+        "png": "wumpus-resolution.png",
+        "ancho": 1640,
+        "alto": 338
+    },
+    {
+        "archivo": "wumpus-seq01.eps",
+        "png": "wumpus-seq01.png",
+        "ancho": 1637,
+        "alto": 737
+    },
+    {
+        "archivo": "wumpus-seq35.eps",
+        "png": "wumpus-seq35.png",
+        "ancho": 1645,
+        "alto": 737
+    },
+    {
+        "archivo": "wumpus-stuck.eps",
+        "png": "wumpus-stuck.png",
+        "ancho": 662,
+        "alto": 662
+    },
+    {
+        "archivo": "wumpus-variables.eps",
+        "png": "wumpus-variables.png",
+        "ancho": 655,
+        "alto": 655
+    },
+    {
+        "archivo": "wumpus-world.eps",
+        "png": "wumpus-world.png",
+        "ancho": 753,
+        "alto": 684
+    },
+    {
+        "archivo": "xy-plot.eps",
+        "png": "xy-plot.png",
+        "ancho": 1645,
+        "alto": 444
+    }
+]
