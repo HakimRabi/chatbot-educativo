@@ -1,35 +1,35 @@
 {
-  "created_at": "2025-06-26T14:11:40.834139",
+  "created_at": "2025-08-22T10:09:43.305998",
   "pdf_files": [
     {
-      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\06_Clustering.pdf",
+      "path": "C:\\Users\\hakim\\OneDrive\\Documentos\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\06_Clustering.pdf",
       "hash": "dad45ab793726074a3d1e0647115b4150f124442a8cea9bc4b2d2cea49e1080b",
       "size": 2508857,
-      "mtime": 1747944613.7116385,
+      "mtime": 1749839816.16323,
       "name": "06_Clustering.pdf"
     },
     {
-      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\d2l-en-mxnet.pdf",
+      "path": "C:\\Users\\hakim\\OneDrive\\Documentos\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\d2l-en-mxnet.pdf",
       "hash": "4175422c67bf52031c9f0cb0e964a28f4495c087080c80321470fa9c77238952",
       "size": 43412766,
-      "mtime": 1750960464.2813575,
+      "mtime": 1755871457.1620567,
       "name": "d2l-en-mxnet.pdf"
     },
     {
-      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf",
+      "path": "C:\\Users\\hakim\\OneDrive\\Documentos\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf",
       "hash": "faff8c05a4550c5fddb897c89defceb2ab53dfb9bc9d8ce8f118d51b7ee55a04",
       "size": 17111705,
-      "mtime": 1750957003.8882065,
+      "mtime": 1755871457.2969596,
       "name": "inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf"
     },
     {
-      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\SYLLABUS.pdf",
+      "path": "C:\\Users\\hakim\\OneDrive\\Documentos\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\SYLLABUS.pdf",
       "hash": "8c7a70ad3b1c3fc64cf4550f8a88e667e7818735b2b031ac202827c37b357179",
       "size": 256105,
-      "mtime": 1749263230.1913443,
+      "mtime": 1749839816.1747437,
       "name": "SYLLABUS.pdf"
     }
   ],
-  "total_fragments": 3025,
+  "total_fragments": 7757,
   "cache_version": "1.0"
 }

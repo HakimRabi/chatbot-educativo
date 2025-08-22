@@ -28,6 +28,8 @@ class AISystem:
         self.using_chroma = False
         self.cadena = None
         self.llm = None
+        self.llm_cache = {}  # Cache para múltiples modelos
+        self.current_model = None
         self.memory = None
         self.vector_store = None
         self.chroma_error_details = None
@@ -36,6 +38,84 @@ class AISystem:
         self.data_dir = os.path.dirname(CHROMA_PATH) if CHROMA_PATH else "data"
         
         # No inicializar automáticamente, se hará desde el servidor
+    
+    def get_or_create_llm(self, model_name=None):
+        """Obtiene o crea una instancia de LLM para el modelo especificado"""
+        if model_name is None:
+            model_name = DEFAULT_MODEL
+            
+        # Verificar si el modelo está disponible
+        if model_name not in AVAILABLE_MODELS:
+            logger.warning(f"Modelo {model_name} no disponible, usando {DEFAULT_MODEL}")
+            model_name = DEFAULT_MODEL
+            
+        # Usar cache para evitar recrear instancias
+        if model_name in self.llm_cache:
+            logger.debug(f"Usando LLM cacheado para modelo: {model_name}")
+            return self.llm_cache[model_name]
+            
+        try:
+            model_config = AVAILABLE_MODELS[model_name]
+            logger.info(f"Creando nueva instancia LLM para modelo: {model_name}")
+            
+            llm_instance = OllamaLLM(
+                model=model_config["name"],
+                temperature=model_config["temperature"]
+            )
+            
+            # Cachear la instancia
+            self.llm_cache[model_name] = llm_instance
+            logger.info(f"✅ LLM {model_name} creado y cacheado")
+            
+            return llm_instance
+            
+        except Exception as e:
+            logger.error(f"❌ Error creando LLM para {model_name}: {e}")
+            # Fallback al modelo por defecto
+            if model_name != DEFAULT_MODEL:
+                return self.get_or_create_llm(DEFAULT_MODEL)
+            raise
+    
+    def switch_model(self, model_name):
+        """Cambia el modelo activo del sistema"""
+        try:
+            logger.info(f"Cambiando modelo de {self.current_model} a {model_name}")
+            
+            # Obtener o crear la instancia del LLM
+            new_llm = self.get_or_create_llm(model_name)
+            
+            # Actualizar el LLM principal
+            self.llm = new_llm
+            self.current_model = model_name
+            
+            # Recrear la cadena de RetrievalQA si existe vector store
+            if self.vector_store is not None:
+                logger.info("Actualizando RetrievalQA con nuevo modelo...")
+                retriever = self.vector_store.as_retriever(search_kwargs={"k": 3})
+                
+                self.cadena = RetrievalQA.from_chain_type(
+                    llm=self.llm,
+                    chain_type="stuff",
+                    retriever=retriever,
+                    return_source_documents=True,
+                    chain_type_kwargs={"prompt": PROMPT_QA_SIMPLE}
+                )
+                logger.info(f"✅ RetrievalQA actualizado con modelo {model_name}")
+            
+            logger.info(f"✅ Modelo cambiado exitosamente a: {model_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Error cambiando modelo a {model_name}: {e}")
+            return False
+    
+    def get_available_models(self):
+        """Retorna la lista de modelos disponibles"""
+        return AVAILABLE_MODELS
+    
+    def get_current_model(self):
+        """Retorna el modelo actualmente activo"""
+        return self.current_model or DEFAULT_MODEL
     
     def check_chromadb_dependencies(self):
         """Verifica las dependencias necesarias para ChromaDB."""
@@ -388,8 +468,9 @@ class AISystem:
             logger.info("🧠 Inicializando modelo de lenguaje...")
             try:
                 embeddings = OllamaEmbeddings(model="nomic-embed-text")
-                self.llm = OllamaLLM(model=MODEL_NAME, temperature=MODEL_TEMPERATURE)
-                logger.info("✅ Embeddings y LLM inicializados correctamente")
+                self.llm = self.get_or_create_llm(DEFAULT_MODEL)
+                self.current_model = DEFAULT_MODEL
+                logger.info(f"✅ Embeddings y LLM inicializados correctamente con modelo: {DEFAULT_MODEL}")
             except Exception as e:
                 logger.error(f"❌ Error inicializando Ollama: {e}")
                 raise
@@ -439,7 +520,8 @@ class AISystem:
         """Configura el sistema en modo fallback."""
         try:
             logger.info("Configurando sistema en modo fallback...")
-            self.llm = OllamaLLM(model=MODEL_NAME, temperature=MODEL_TEMPERATURE)
+            self.llm = self.get_or_create_llm(DEFAULT_MODEL)
+            self.current_model = DEFAULT_MODEL
             self.cadena = load_qa_chain(self.llm, chain_type="stuff")
             self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
             self.using_vector_db = False
@@ -522,6 +604,12 @@ class AISystem:
     def process_question(self, pregunta_obj):
         """Procesa la pregunta principal usando el sistema completo."""
         question_text = pregunta_obj.texto
+        
+        # Manejar cambio de modelo si se especifica
+        if hasattr(pregunta_obj, 'modelo') and pregunta_obj.modelo:
+            if pregunta_obj.modelo != self.current_model:
+                logger.info(f"Cambiando modelo para esta consulta: {pregunta_obj.modelo}")
+                self.switch_model(pregunta_obj.modelo)
         
         # Construir historial de conversación
         conversation_history = ""

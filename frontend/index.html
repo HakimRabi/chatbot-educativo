@@ -78,6 +78,28 @@
             background-color: #007bff;
             color: white;
         }
+
+        /* --- Bloque desplegable de modelos --- */
+        .model-selector {
+            margin-left: 10px;
+            display: inline-block;
+        }
+
+        .model-dropdown {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid #007bff;
+            background: #f9fbff;
+            color: #007bff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .model-dropdown:hover {
+            background: #007bff;
+            color: white;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
@@ -126,6 +148,13 @@
             <div class="session-controls">
                 <div class="left-buttons">
                     <button id="new-session-button">Nueva conversación</button>
+                    <!-- Selector de modelo al lado de Nueva conversación -->
+                    <div class="model-selector">
+                        <select id="model-select" class="model-dropdown">
+                            <option value="ollama3" selected>Ollama3</option>
+                            <option value="gpt-oss:20b">gpt-oss:20b (razonamiento)</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="right-buttons">
                     <button id="history-button">Historial</button>
@@ -148,5 +177,64 @@
 
     <!-- Scripts -->
     <script src="assets/js/chat.js"></script>
+    <script>
+        // Capturar el modelo seleccionado
+        const modelSelect = document.getElementById("model-select");
+        let currentModel = modelSelect.value;
+
+        // Función para cargar modelos disponibles
+        async function loadAvailableModels() {
+            try {
+                const response = await fetch('http://localhost:8000/models/available');
+                const data = await response.json();
+                
+                if (data.models) {
+                    // Limpiar opciones actuales
+                    modelSelect.innerHTML = '';
+                    
+                    // Añadir opciones desde el backend
+                    for (const [key, model] of Object.entries(data.models)) {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.textContent = `${model.display_name} - ${model.description}`;
+                        
+                        // Marcar como seleccionado el modelo actual
+                        if (key === data.current_model) {
+                            option.selected = true;
+                            currentModel = key;
+                        }
+                        
+                        modelSelect.appendChild(option);
+                    }
+                    
+                    console.log(`Modelos cargados. Modelo actual: ${data.current_model}`);
+                }
+            } catch (error) {
+                console.error('Error cargando modelos:', error);
+                // Mantener opciones por defecto si hay error
+            }
+        }
+
+        // Cargar modelos al iniciar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAvailableModels();
+        });
+
+        modelSelect.addEventListener("change", () => {
+            currentModel = modelSelect.value;
+            console.log("Modelo seleccionado:", currentModel);
+            
+            // Mostrar notificación del cambio
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Modelo cambiado',
+                    text: `Próximas respuestas usarán: ${modelSelect.options[modelSelect.selectedIndex].text}`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        });
+    </script>
 </body>
 </html>

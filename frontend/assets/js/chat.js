@@ -860,12 +860,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Mostrar indicador de "pensando"
         showThinkingIndicator();
 
+        // Obtener el modelo seleccionado
+        const modelSelect = document.getElementById('model-select');
+        const selectedModel = modelSelect ? modelSelect.value : 'llama3';
+
         // Preparar el objeto de pregunta
         const pregunta = {
             texto: question,
             userId: userId,
             chatToken: currentSessionId,
-            history: history
+            history: history,
+            modelo: selectedModel  // Incluir el modelo seleccionado
         };
 
         try {

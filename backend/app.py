@@ -125,6 +125,7 @@ class Pregunta(BaseModel):
     userId: str = None
     chatToken: str = None
     history: list = None
+    modelo: str = None  # Nuevo campo para el modelo seleccionado
 
 class SessionIn(BaseModel):
     user_id: str
@@ -356,6 +357,56 @@ async def get_ai_diagnostics():
             "error": str(e),
             "basic_info": get_ai_system_info()
         }
+
+# Nuevos endpoints para gestión de modelos
+@app.get("/models/available")
+async def get_available_models():
+    """Retorna los modelos disponibles"""
+    global ai_system_instance
+    try:
+        if ai_system_instance:
+            from config import AVAILABLE_MODELS
+            return {
+                "models": AVAILABLE_MODELS,
+                "current_model": ai_system_instance.get_current_model()
+            }
+        else:
+            from config import AVAILABLE_MODELS, DEFAULT_MODEL
+            return {
+                "models": AVAILABLE_MODELS,
+                "current_model": DEFAULT_MODEL
+            }
+    except Exception as e:
+        logger.error(f"Error obteniendo modelos: {e}")
+        return {"error": str(e), "models": {}, "current_model": None}
+
+@app.post("/models/switch")
+async def switch_model(request: Request):
+    """Cambia el modelo activo"""
+    global ai_system_instance
+    try:
+        data = await request.json()
+        model_name = data.get("model")
+        
+        if not model_name:
+            return {"success": False, "error": "Modelo no especificado"}
+            
+        if ai_system_instance:
+            success = ai_system_instance.switch_model(model_name)
+            if success:
+                return {
+                    "success": True, 
+                    "message": f"Modelo cambiado a {model_name}",
+                    "current_model": ai_system_instance.get_current_model()
+                }
+            else:
+                return {"success": False, "error": f"Error cambiando modelo a {model_name}"}
+        else:
+            return {"success": False, "error": "Sistema IA no inicializado"}
+            
+    except Exception as e:
+        logger.error(f"Error cambiando modelo: {e}")
+        return {"success": False, "error": str(e)}
 
 # Endpoint optimizado para historial que no interfiera
 @app.get("/chat/history")
