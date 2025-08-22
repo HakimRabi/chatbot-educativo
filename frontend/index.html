@@ -100,6 +100,35 @@
             background: #007bff;
             color: white;
         }
+
+        /* Estilos para la alerta de cambio de modelo */
+        .model-change-alert {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            max-width: 300px;
+            font-size: 14px;
+        }
+
+        .model-change-alert.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .model-change-alert strong {
+            display: block;
+            margin-bottom: 4px;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
@@ -109,7 +138,8 @@
         if (typeof marked !== 'undefined') {
             marked.setOptions({
                 breaks: true,
-                gfm: true,
+                gfm: true,               // GitHub Flavored Markdown (incluye tablas)
+                tables: true,            // Habilitar soporte de tablas
                 sanitize: false,
                 smartLists: true,
                 smartypants: true,
@@ -125,7 +155,7 @@
     <div class="chat-container">
         <div class="chat-header">
             <h1>UNAB-IA Mentor</h1>
-            <p>Asistente ChatBot Universidad Andres Bello v0.4.6 beta-testing</p>
+            <p>Asistente ChatBot Universidad Andres Bello v0.5.1 beta-testing</p>
             <div class="user-info">
                 <span id="user-name"></span>
                 <button id="logout-button">Cerrar sesión</button>
@@ -175,6 +205,12 @@
         </div>
     </div>
 
+    <!-- Alerta de cambio de modelo -->
+    <div id="model-change-alert" class="model-change-alert">
+        <strong>Modelo cambiado</strong>
+        <span id="model-change-message"></span>
+    </div>
+
     <!-- Scripts -->
     <script src="assets/js/chat.js"></script>
     <script>
@@ -220,19 +256,48 @@
             loadAvailableModels();
         });
 
-        modelSelect.addEventListener("change", () => {
+        // Función para mostrar alerta de cambio de modelo
+        function showModelChangeAlert(modelName) {
+            const alert = document.getElementById('model-change-alert');
+            const message = document.getElementById('model-change-message');
+            
+            message.textContent = `Se cambió al modelo ${modelName}`;
+            alert.classList.add('show');
+            
+            // Ocultar después de 3 segundos
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 3000);
+        }
+
+        modelSelect.addEventListener("change", async () => {
             currentModel = modelSelect.value;
             console.log("Modelo seleccionado:", currentModel);
             
-            // Mostrar notificación del cambio
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Modelo cambiado',
-                    text: `Próximas respuestas usarán: ${modelSelect.options[modelSelect.selectedIndex].text}`,
-                    timer: 2000,
-                    showConfirmButton: false
+            try {
+                // Cambiar modelo en el backend
+                const response = await fetch('http://localhost:8000/models/switch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ model: currentModel })
                 });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Mostrar alerta de éxito discreta
+                    const selectedOption = modelSelect.options[modelSelect.selectedIndex];
+                    const modelDisplayName = selectedOption.textContent;
+                    showModelChangeAlert(modelDisplayName);
+                } else {
+                    console.error('Error cambiando modelo:', data.error);
+                    // Solo mostrar error en consola, sin alertas molestas
+                }
+            } catch (error) {
+                console.error('Error en cambio de modelo:', error);
+                // Solo mostrar error en consola, sin alertas molestas
             }
         });
     </script>

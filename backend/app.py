@@ -394,10 +394,13 @@ async def switch_model(request: Request):
         if ai_system_instance:
             success = ai_system_instance.switch_model(model_name)
             if success:
+                # Obtener estado del contexto después del cambio
+                context_status = ai_system_instance.get_context_status()
                 return {
                     "success": True, 
                     "message": f"Modelo cambiado a {model_name}",
-                    "current_model": ai_system_instance.get_current_model()
+                    "current_model": ai_system_instance.get_current_model(),
+                    "context_status": context_status
                 }
             else:
                 return {"success": False, "error": f"Error cambiando modelo a {model_name}"}
@@ -407,6 +410,27 @@ async def switch_model(request: Request):
     except Exception as e:
         logger.error(f"Error cambiando modelo: {e}")
         return {"success": False, "error": str(e)}
+
+@app.get("/models/context_status")
+async def get_context_status():
+    """Retorna el estado actual del contexto del sistema"""
+    global ai_system_instance
+    try:
+        if ai_system_instance:
+            status = ai_system_instance.get_context_status()
+            return {
+                "success": True,
+                "context_status": status
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Sistema IA no inicializado",
+                "context_status": {}
+            }
+    except Exception as e:
+        logger.error(f"Error obteniendo estado del contexto: {e}")
+        return {"success": False, "error": str(e), "context_status": {}}
 
 # Endpoint optimizado para historial que no interfiera
 @app.get("/chat/history")

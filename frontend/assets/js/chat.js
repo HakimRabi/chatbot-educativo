@@ -200,6 +200,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Asegurar que las líneas no terminen con espacios
                 .replace(/[ \t]+$/gm, '')
                 
+                // Mejorar formato de tablas - NUEVO
+                .replace(/\|([^|\n]+)\|/g, function(match, content) {
+                    // Limpiar espacios en celdas de tabla
+                    return '|' + content.trim() + '|';
+                })
+                
+                // Asegurar separadores de tabla correctos
+                .replace(/\|\s*[-:]+\s*\|/g, function(match) {
+                    // Normalizar separadores de tabla
+                    const cells = match.split('|').filter(cell => cell.trim());
+                    return '|' + cells.map(cell => {
+                        const cleaned = cell.trim();
+                        if (cleaned.includes(':')) {
+                            return cleaned;
+                        }
+                        return cleaned.replace(/-+/, '---');
+                    }).join('|') + '|';
+                })
+                
+                // Detectar y mejorar tablas simples (sin formato markdown)
+                .replace(/^(.+\|.+)$/gm, function(match) {
+                    // Si la línea contiene pipes pero no está bien formateada
+                    if (!match.startsWith('|') && match.includes('|')) {
+                        return '|' + match + '|';
+                    }
+                    return match;
+                })
+                
                 // LÍNEA PROBLEMÁTICA ELIMINADA - Esta causaba el corte de palabras
                 // .replace(/(\S{60})(\S)/g, '$1 $2');
                 
@@ -234,6 +262,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .replace(/<pre>/g, '<pre class="bot-code-block">')
                 .replace(/<blockquote>/g, '<blockquote class="bot-quote">')
                 .replace(/<hr>/g, '<hr class="bot-separator">')
+                
+                // Mejorar tablas - NUEVO
+                .replace(/<table>/g, '<table class="bot-table">')
+                .replace(/<thead>/g, '<thead class="bot-table-head">')
+                .replace(/<tbody>/g, '<tbody class="bot-table-body">')
+                .replace(/<tr>/g, '<tr class="bot-table-row">')
+                .replace(/<th>/g, '<th class="bot-table-header">')
+                .replace(/<td>/g, '<td class="bot-table-cell">')
                 
                 // Limpiar párrafos vacíos
                 .replace(/<p class="bot-paragraph">\s*<\/p>/g, '')

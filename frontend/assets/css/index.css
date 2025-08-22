@@ -511,6 +511,192 @@ body {
     color: #333;
 }
 
+/* Estilos para tablas markdown */
+.message.bot .message-content table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 16px 0 !important;
+    border: 1px solid #e9ecef !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    background-color: #ffffff !important;
+    font-size: 0.9em !important;
+}
+
+.message.bot .message-content thead {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    color: white !important;
+}
+
+.message.bot .message-content th {
+    padding: 12px 15px !important;
+    text-align: left !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #dee2e6 !important;
+    position: relative !important;
+    font-size: 0.9em !important;
+    letter-spacing: 0.5px !important;
+}
+
+.message.bot .message-content th::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 2px !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.message.bot .message-content td {
+    padding: 10px 15px !important;
+    border-bottom: 1px solid #f8f9fa !important;
+    vertical-align: top !important;
+    line-height: 1.5 !important;
+    color: #495057 !important;
+}
+
+.message.bot .message-content tbody tr {
+    transition: all 0.2s ease !important;
+}
+
+.message.bot .message-content tbody tr:nth-child(even) {
+    background-color: #f8f9fa !important;
+}
+
+.message.bot .message-content tbody tr:hover {
+    background-color: #e3f2fd !important;
+    transform: scale(1.01) !important;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1) !important;
+}
+
+.message.bot .message-content tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Estilos para celdas específicas */
+.message.bot .message-content td:first-child {
+    font-weight: 500 !important;
+    color: #007bff !important;
+}
+
+.message.bot .message-content td:first-child::before {
+    content: '▸ ' !important;
+    color: #007bff !important;
+    font-weight: bold !important;
+}
+
+/* Tabla responsive */
+.message.bot .message-content .table-wrapper {
+    overflow-x: auto !important;
+    margin: 16px 0 !important;
+    border-radius: 8px !important;
+    border: 1px solid #e9ecef !important;
+}
+
+/* Estilos para tablas pequeñas en móviles */
+@media (max-width: 768px) {
+    .message.bot .message-content table {
+        font-size: 0.8em !important;
+        margin: 12px 0 !important;
+    }
+    
+    .message.bot .message-content th,
+    .message.bot .message-content td {
+        padding: 8px 10px !important;
+        font-size: 0.85em !important;
+    }
+    
+    .message.bot .message-content th {
+        font-size: 0.8em !important;
+    }
+}
+
+/* Indicadores adicionales para tablas */
+.message.bot .message-content table::before {
+    display: block !important;
+    font-size: 0.75em !important;
+    color: #6c757d !important;
+    margin-bottom: 8px !important;
+    font-weight: 500 !important;
+}
+
+/* Estilos específicos para clases de tabla bot */
+.message.bot .message-content .bot-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 16px 0 !important;
+    background: white !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}
+
+.message.bot .message-content .bot-table-head {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.message.bot .message-content .bot-table-header {
+    padding: 12px 16px !important;
+    text-align: left !important;
+    font-weight: 600 !important;
+    color: white !important;
+    border-bottom: 2px solid #5a67d8 !important;
+    font-size: 0.9em !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.message.bot .message-content .bot-table-body {
+    background: white !important;
+}
+
+.message.bot .message-content .bot-table-row {
+    transition: background-color 0.2s ease !important;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.message.bot .message-content .bot-table-row:nth-child(even) {
+    background: #f8f9fa !important;
+}
+
+.message.bot .message-content .bot-table-row:hover {
+    background: #e3f2fd !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.message.bot .message-content .bot-table-cell {
+    padding: 12px 16px !important;
+    border-right: 1px solid #dee2e6 !important;
+    vertical-align: top !important;
+    line-height: 1.5 !important;
+    color: #2c3e50 !important;
+}
+
+.message.bot .message-content .bot-table-cell:last-child {
+    border-right: none !important;
+}
+
+/* Responsive para tablas bot */
+@media (max-width: 768px) {
+    .message.bot .message-content .bot-table {
+        font-size: 0.8em !important;
+        margin: 12px 0 !important;
+    }
+    
+    .message.bot .message-content .bot-table-header,
+    .message.bot .message-content .bot-table-cell {
+        padding: 8px 10px !important;
+        font-size: 0.85em !important;
+    }
+    
+    .message.bot .message-content .bot-table-header {
+        font-size: 0.8em !important;
+    }
+}
+
 /* Animaciones mejoradas para mensajes */
 .message {
     animation: messageAppear 0.3s ease-out;

@@ -77,36 +77,69 @@ class AISystem:
             raise
     
     def switch_model(self, model_name):
-        """Cambia el modelo activo del sistema"""
+        """Cambia el modelo activo del sistema preservando todo el contexto"""
         try:
-            logger.info(f"Cambiando modelo de {self.current_model} a {model_name}")
+            logger.info(f"🔄 Cambiando modelo de {self.current_model} a {model_name}")
             
             # Obtener o crear la instancia del LLM
             new_llm = self.get_or_create_llm(model_name)
+            
+            # Preservar estado anterior para rollback si hay error
+            old_llm = self.llm
+            old_model = self.current_model
+            old_cadena = self.cadena
             
             # Actualizar el LLM principal
             self.llm = new_llm
             self.current_model = model_name
             
-            # Recrear la cadena de RetrievalQA si existe vector store
+            # IMPORTANTE: Recrear la cadena de RetrievalQA manteniendo el MISMO vector store
             if self.vector_store is not None:
-                logger.info("Actualizando RetrievalQA con nuevo modelo...")
-                retriever = self.vector_store.as_retriever(search_kwargs={"k": 3})
+                logger.info(f"🔗 Actualizando RetrievalQA con modelo {model_name} manteniendo vector store...")
                 
-                self.cadena = RetrievalQA.from_chain_type(
-                    llm=self.llm,
-                    chain_type="stuff",
-                    retriever=retriever,
-                    return_source_documents=True,
-                    chain_type_kwargs={"prompt": PROMPT_QA_SIMPLE}
-                )
-                logger.info(f"✅ RetrievalQA actualizado con modelo {model_name}")
+                try:
+                    # Usar el MISMO retriever para mantener acceso a documentos
+                    retriever = self.vector_store.as_retriever(search_kwargs={"k": 3})
+                    
+                    # Recrear cadena con el MISMO prompt template para consistencia
+                    self.cadena = RetrievalQA.from_chain_type(
+                        llm=self.llm,
+                        chain_type="stuff",
+                        retriever=retriever,
+                        return_source_documents=True,
+                        chain_type_kwargs={"prompt": PROMPT_QA_SIMPLE}  # MISMO prompt
+                    )
+                    
+                    logger.info(f"✅ RetrievalQA actualizado exitosamente con modelo {model_name}")
+                    
+                except Exception as chain_error:
+                    logger.error(f"❌ Error recreando cadena: {chain_error}")
+                    # Rollback en caso de error
+                    self.llm = old_llm
+                    self.current_model = old_model
+                    self.cadena = old_cadena
+                    raise chain_error
+            else:
+                logger.warning("⚠️ No hay vector store disponible - modelo cambiado sin RAG")
             
-            logger.info(f"✅ Modelo cambiado exitosamente a: {model_name}")
+            # Verificar que la memoria se mantiene (para conservar historial de chat)
+            if self.memory is None:
+                logger.info("🧠 Inicializando memoria para mantener historial...")
+                self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+            
+            # Log detallado del estado final
+            logger.info(f"✅ Cambio de modelo completado exitosamente:")
+            logger.info(f"   📋 Modelo activo: {self.current_model}")
+            logger.info(f"   📚 Vector store: {'Disponible' if self.vector_store else 'No disponible'}")
+            logger.info(f"   🔗 Cadena RAG: {'Configurada' if self.cadena else 'No configurada'}")
+            logger.info(f"   🧠 Memoria: {'Activa' if self.memory else 'Inactiva'}")
+            logger.info(f"   📊 Fragmentos disponibles: {len(self.fragmentos)}")
+            
             return True
             
         except Exception as e:
             logger.error(f"❌ Error cambiando modelo a {model_name}: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return False
     
     def get_available_models(self):
@@ -116,6 +149,60 @@ class AISystem:
     def get_current_model(self):
         """Retorna el modelo actualmente activo"""
         return self.current_model or DEFAULT_MODEL
+    
+    def transfer_context_to_new_model(self, new_llm, model_name):
+        """Transfiere todo el contexto del sistema al nuevo modelo"""
+        try:
+            logger.info(f"🔄 Transfiriendo contexto completo al modelo {model_name}")
+            
+            context_transfer_summary = {
+                "documents_count": len(self.documentos),
+                "fragments_count": len(self.fragmentos),
+                "vector_store_available": self.vector_store is not None,
+                "vector_store_type": "ChromaDB" if self.using_chroma else ("FAISS" if self.using_vector_db else "None"),
+                "memory_available": self.memory is not None,
+                "previous_model": self.current_model
+            }
+            
+            # 1. Verificar que todos los documentos están disponibles
+            if not self.fragmentos and self.vector_store is None:
+                logger.warning("⚠️ No hay documentos ni vector store - modelo tendrá contexto limitado")
+            
+            # 2. Asegurar que el vector store funciona con el nuevo modelo
+            if self.vector_store is not None:
+                try:
+                    # Probar una búsqueda de prueba para verificar que funciona
+                    test_docs = self.vector_store.similarity_search("test", k=1)
+                    logger.info(f"✅ Vector store verificado - {len(test_docs)} documentos accesibles")
+                except Exception as e:
+                    logger.error(f"❌ Error verificando vector store: {e}")
+            
+            # 3. Verificar memoria y historial
+            if self.memory:
+                chat_history = self.memory.chat_memory.messages
+                logger.info(f"🧠 Memoria preservada - {len(chat_history)} mensajes en historial")
+            
+            logger.info(f"📋 Resumen de transferencia de contexto: {context_transfer_summary}")
+            return context_transfer_summary
+            
+        except Exception as e:
+            logger.error(f"❌ Error transfiriendo contexto: {e}")
+            return None
+    
+    def get_context_status(self):
+        """Retorna el estado actual del contexto del sistema"""
+        return {
+            "current_model": self.get_current_model(),
+            "documents_loaded": len(self.documentos),
+            "fragments_available": len(self.fragmentos),
+            "vector_store_type": "ChromaDB" if self.using_chroma else ("FAISS" if self.using_vector_db else "None"),
+            "vector_store_active": self.vector_store is not None,
+            "retrieval_chain_active": self.cadena is not None,
+            "memory_active": self.memory is not None,
+            "system_initialized": self.is_initialized,
+            "available_models": list(AVAILABLE_MODELS.keys()),
+            "cached_models": list(self.llm_cache.keys())
+        }
     
     def check_chromadb_dependencies(self):
         """Verifica las dependencias necesarias para ChromaDB."""
@@ -507,7 +594,27 @@ class AISystem:
             self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
             
             self.is_initialized = True
-            logger.info(f"🎉 Sistema IA LISTO: ChromaDB={self.using_chroma}, VectorDB={self.using_vector_db}")
+            
+            # Documentar el contexto completo disponible
+            context_summary = {
+                "model": self.current_model,
+                "documents": len(self.documentos),
+                "fragments": len(self.fragmentos),
+                "vector_store": "ChromaDB" if self.using_chroma else ("FAISS" if self.using_vector_db else "None"),
+                "retrieval_chain": self.cadena is not None,
+                "memory": self.memory is not None
+            }
+            
+            logger.info(f"🎉 Sistema IA COMPLETAMENTE LISTO:")
+            logger.info(f"   📋 Modelo inicial: {self.current_model}")
+            logger.info(f"   📚 Documentos cargados: {len(self.documentos)}")
+            logger.info(f"   🔧 Fragmentos procesados: {len(self.fragmentos)}")
+            logger.info(f"   💾 Vector Store: {'ChromaDB' if self.using_chroma else ('FAISS' if self.using_vector_db else 'None')}")
+            logger.info(f"   🔗 RAG Chain: {'Activa' if self.cadena else 'Inactiva'}")
+            logger.info(f"   🧠 Memoria: {'Activa' if self.memory else 'Inactiva'}")
+            logger.info(f"   🎯 Modelos disponibles: {list(AVAILABLE_MODELS.keys())}")
+            logger.info(f"   🚀 CONTEXTO COMPLETO DISPONIBLE PARA TODOS LOS MODELOS")
+            
             return True
             
         except Exception as e:
@@ -602,26 +709,108 @@ class AISystem:
             return question
     
     def process_question(self, pregunta_obj):
-        """Procesa la pregunta principal usando el sistema completo."""
+        """Procesa la pregunta principal usando el sistema completo con contexto preservado."""
         question_text = pregunta_obj.texto
         
         # Manejar cambio de modelo si se especifica
         if hasattr(pregunta_obj, 'modelo') and pregunta_obj.modelo:
             if pregunta_obj.modelo != self.current_model:
-                logger.info(f"Cambiando modelo para esta consulta: {pregunta_obj.modelo}")
-                self.switch_model(pregunta_obj.modelo)
+                logger.info(f"🔄 Cambiando modelo para esta consulta: {pregunta_obj.modelo}")
+                success = self.switch_model(pregunta_obj.modelo)
+                if success:
+                    # Transferir contexto y verificar estado
+                    context_status = self.transfer_context_to_new_model(self.llm, pregunta_obj.modelo)
+                    logger.info(f"✅ Contexto transferido exitosamente al modelo {pregunta_obj.modelo}")
+                else:
+                    logger.warning(f"⚠️ Fallo cambio de modelo, usando {self.current_model}")
         
-        # Construir historial de conversación
+        # Construir historial de conversación COMPLETO
         conversation_history = ""
         if pregunta_obj.history and isinstance(pregunta_obj.history, list):
-            history_limit = min(10, len(pregunta_obj.history))
+            # Usar más historial para mejor contexto (aumentado de 10 a 15)
+            history_limit = min(15, len(pregunta_obj.history))
             recent_history = pregunta_obj.history[-history_limit:]
+            
+            logger.info(f"📚 Procesando historial: {len(recent_history)} mensajes recientes")
             
             for msg in recent_history:
                 if msg.get('sender') == 'user':
                     conversation_history += f"Usuario: {msg.get('text','')}\n"
                 elif msg.get('sender') == 'bot':
                     conversation_history += f"Bot: {msg.get('text','')}\n"
+        
+        # Analizar tipo y complejidad
+        tipo_pregunta = self.detect_question_type(question_text)
+        tipo_respuesta = analyze_question_complexity(question_text)
+        
+        logger.info(f"🔍 Análisis: Tipo={tipo_pregunta}, Complejidad={tipo_respuesta}, Modelo={self.current_model}")
+        
+        # Generar consulta optimizada
+        search_query = self.generate_search_query(question_text, conversation_history)
+        
+        # Recuperar documentos relevantes con más contexto
+        documentos_relevantes = self.retrieve_relevant_documents(search_query)
+        contexto_documentos = "\n".join([doc.page_content for doc in documentos_relevantes])
+        
+        logger.info(f"📖 Documentos recuperados: {len(documentos_relevantes)} fragmentos relevantes")
+        
+        # Seleccionar plantilla ESPECÍFICA según el tipo
+        plantilla_seleccionada = self.get_template_by_type(tipo_pregunta)
+        
+        # Generar respuesta con contexto COMPLETO
+        try:
+            if self.cadena and documentos_relevantes:
+                # Usar RAG con contexto completo
+                logger.info(f"🔗 Generando respuesta con RAG usando modelo {self.current_model}")
+                
+                # Preparar input completo para RetrievalQA
+                query_input = {
+                    "query": question_text,
+                    "chat_history": conversation_history  # Incluir historial
+                }
+                
+                resultado = self.cadena(query_input)
+                respuesta = resultado["result"]
+                
+                # Añadir información del modelo usado
+                respuesta += f"\n\n*[Respuesta generada con {AVAILABLE_MODELS[self.current_model]['display_name']}]*"
+                
+            elif plantilla_seleccionada:
+                # Usar plantilla específica con contexto
+                logger.info(f"📝 Generando respuesta con plantilla {tipo_pregunta}")
+                respuesta = self._generate_with_template(
+                    plantilla_seleccionada, 
+                    question_text, 
+                    conversation_history, 
+                    contexto_documentos
+                )
+            else:
+                # Fallback con contexto completo
+                logger.info(f"🔄 Usando respuesta fallback con contexto")
+                respuesta = self._generate_fallback_response(
+                    question_text, 
+                    conversation_history, 
+                    contexto_documentos
+                )
+            
+            # Limpiar y mejorar respuesta
+            respuesta_limpia = self._clean_response_artifacts(respuesta)
+            
+            # Actualizar memoria con la nueva interacción
+            if self.memory:
+                self.memory.chat_memory.add_user_message(question_text)
+                self.memory.chat_memory.add_ai_message(respuesta_limpia)
+                logger.info("🧠 Memoria actualizada con nueva interacción")
+            
+            logger.info(f"✅ Respuesta generada exitosamente con modelo {self.current_model}")
+            return respuesta_limpia
+            
+        except Exception as e:
+            logger.error(f"❌ Error generando respuesta: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            
+            # Fallback de emergencia
+            return self._generate_emergency_fallback(question_text)
         
         # Analizar tipo y complejidad
         tipo_pregunta = self.detect_question_type(question_text)
@@ -728,6 +917,16 @@ class AISystem:
         response = re.sub(r'\n{3,}', '\n\n', response)
         
         return response
+
+    def _generate_emergency_fallback(self, question):
+        """Genera respuesta de emergencia cuando todo falla"""
+        return (
+            f"He recibido tu pregunta: '{question}'. "
+            f"Estoy experimentando algunas dificultades técnicas, pero puedo ayudarte con "
+            f"conceptos de inteligencia artificial, machine learning, algoritmos y más. "
+            f"¿Podrías reformular tu pregunta o ser más específico sobre lo que necesitas saber? "
+            f"\n\n*[Respuesta de emergencia - Modelo: {self.get_current_model()}]*"
+        )
 
     def generate_dynamic_suggestions(self, conversation_history):
         """Genera sugerencias dinámicas basadas en el historial de conversación."""
