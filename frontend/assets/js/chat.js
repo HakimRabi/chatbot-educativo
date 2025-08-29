@@ -119,8 +119,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         // Guardar el nuevo ID de sesión
         localStorage.setItem('currentSessionId', currentSessionId);
-        // Agregar mensaje de bienvenida
-        addMessage('¡Hola! ¿En qué puedo ayudarte hoy?', 'bot');
+        // Agregar mensaje de bienvenida con ejemplos de funcionalidades
+        addMessage(`¡Hola! ¿En qué puedo ayudarte hoy? 
+
+**Capacidades disponibles:**
+- 💬 Conversación sobre temas académicos
+- 📊 Código de programación con syntax highlighting
+- 🧮 **Ecuaciones matemáticas** con LaTeX (¡NUEVO!)
+- 📋 Copiar código y ecuaciones con un clic
+
+**Ejemplos de ecuaciones que puedes pedirme:**
+- Ecuación cuadrática: $ax^2 + bx + c = 0$
+- Integral: $\\int_{a}^{b} f(x) dx$
+- Matriz: $\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$
+
+¡Prueba preguntándome sobre matemáticas, programación o cualquier tema académico!`, 'bot');
     }
 
     // Función para generar un ID de sesión único
@@ -318,22 +331,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Procesar referencias de figuras ANTES del renderizado markdown
             const { processedText, figuresFound } = processFigureReferences(message);
             
-            // Configurar marked para un renderizado más avanzado
+            // Configurar marked para un renderizado más avanzado con soporte de código
             marked.setOptions({
                 breaks: true,
                 gfm: true,
+                tables: true,
                 sanitize: false,
                 smartLists: true,
                 smartypants: true,
                 headerIds: false,
                 mangle: false,
                 pedantic: false,
-                silent: true
+                silent: true,
+                highlight: function(code, lang) {
+                    // Si Prism está disponible y el lenguaje es soportado
+                    if (typeof Prism !== 'undefined' && lang && Prism.languages[lang]) {
+                        try {
+                            return Prism.highlight(code, Prism.languages[lang], lang);
+                        } catch (e) {
+                            console.warn('Error highlighting code:', e);
+                            return code;
+                        }
+                    }
+                    return code;
+                }
             });
             
             let processedMessage = processedText;
             
-            // Limpieza y normalización de texto
+            // Limpieza y normalización de texto mejorada para código y ecuaciones
             processedMessage = processedMessage
                 .replace(/[ \t]+/g, ' ')
                 .replace(/\n{3,}/g, '\n\n')
@@ -347,6 +373,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .replace(/^([a-z])\)\s+/gm, '- ')
                 .replace(/^[-=]{3,}$/gm, '\n---\n')
                 .replace(/[ \t]+$/gm, '')
+                // Mejorar detección de bloques de código con lenguajes
+                .replace(/```(\w+)?\n([\s\S]*?)```/g, function(match, lang, code) {
+                    const language = lang || 'text';
+                    return '```' + language + '\n' + code.trim() + '\n```';
+                })
+                // Proteger ecuaciones LaTeX durante el procesamiento
+                .replace(/\$\$([\s\S]*?)\$\$/g, function(match, equation) {
+                    return `LATEX_DISPLAY_${btoa(equation)}_LATEX_DISPLAY`;
+                })
+                .replace(/\\\[([\s\S]*?)\\\]/g, function(match, equation) {
+                    return `LATEX_DISPLAY_${btoa(equation)}_LATEX_DISPLAY`;
+                })
+                .replace(/\$([^\$\n]+?)\$/g, function(match, equation) {
+                    return `LATEX_INLINE_${btoa(equation)}_LATEX_INLINE`;
+                })
+                .replace(/\\\(([^\\]+?)\\\)/g, function(match, equation) {
+                    return `LATEX_INLINE_${btoa(equation)}_LATEX_INLINE`;
+                })
+                // Mejorar tablas
                 .replace(/\|([^|\n]+)\|/g, function(match, content) {
                     return '|' + content.trim() + '|';
                 })
@@ -410,9 +455,70 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .replace(/<code class="bot-code">([^<]*)<\/code>/g, (match, content) => {
                     const cleanContent = content.replace(/\s+/g, ' ').trim();
                     return `<code class="bot-code">${cleanContent}</code>`;
+                })
+                // Restaurar ecuaciones LaTeX protegidas
+                .replace(/LATEX_DISPLAY_([A-Za-z0-9+/=]+)_LATEX_DISPLAY/g, function(match, encodedEquation) {
+                    try {
+                        const equation = atob(encodedEquation);
+                        return `$$${equation}$$`;
+                    } catch (e) {
+                        console.warn('Error decoding LaTeX equation:', e);
+                        return match;
+                    }
+                })
+                .replace(/LATEX_INLINE_([A-Za-z0-9+/=]+)_LATEX_INLINE/g, function(match, encodedEquation) {
+                    try {
+                        const equation = atob(encodedEquation);
+                        return `$${equation}$`;
+                    } catch (e) {
+                        console.warn('Error decoding LaTeX equation:', e);
+                        return match;
+                    }
                 });
             
             contentDiv.innerHTML = htmlContent;
+            
+            // Aplicar syntax highlighting, ecuaciones matemáticas y funcionalidad de código
+            setTimeout(() => {
+                try {
+                    // Aplicar renderizado de ecuaciones matemáticas primero
+                    if (typeof renderMathEquations === 'function') {
+                        renderMathEquations(contentDiv);
+                    }
+                    
+                    // Aplicar Prism highlighting si está disponible
+                    if (typeof highlightCodeBlocks === 'function') {
+                        highlightCodeBlocks(contentDiv);
+                    }
+                    
+                    // Agregar funcionalidad de copiar código
+                    if (typeof addCopyFunctionality === 'function') {
+                        addCopyFunctionality(contentDiv);
+                    }
+                    
+                    // Agregar funcionalidad de copiar ecuaciones
+                    if (typeof addMathCopyFunctionality === 'function') {
+                        addMathCopyFunctionality(contentDiv);
+                    }
+                    
+                    // Procesar bloques de código para detectar lenguajes
+                    contentDiv.querySelectorAll('pre code').forEach(codeBlock => {
+                        const parentPre = codeBlock.parentElement;
+                        const classList = codeBlock.className;
+                        
+                        // Extraer el lenguaje de la clase
+                        const langMatch = classList.match(/language-(\w+)/);
+                        if (langMatch && langMatch[1]) {
+                            const language = langMatch[1];
+                            parentPre.setAttribute('data-language', language);
+                            parentPre.classList.add(`language-${language}`);
+                        }
+                    });
+                    
+                } catch (codeError) {
+                    console.warn('Error al procesar código:', codeError);
+                }
+            }, 100);
             
             // Mejorar el estilo después del renderizado con mejor manejo de errores
             setTimeout(() => {
@@ -480,32 +586,47 @@ document.addEventListener('DOMContentLoaded', async () => {
                         heading.style.hyphens = 'auto';
                     });
                     
-                    // Mejorar código inline
-                    contentDiv.querySelectorAll('code:not(pre code)').forEach(code => {
+                    // Mejorar código inline - solo si no tiene clase CSS personalizada
+                    contentDiv.querySelectorAll('code:not(pre code):not(.bot-code)').forEach(code => {
                         code.style.backgroundColor = '#f8f9fa';
-                        code.style.padding = '2px 6px';
+                        code.style.padding = '3px 8px';
                         code.style.borderRadius = '4px';
                         code.style.fontFamily = '"SFMono-Regular", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
                         code.style.fontSize = '0.9em';
-                        code.style.color = '#e83e8c';
+                        code.style.color = '#d73a49';
                         code.style.border = '1px solid #e9ecef';
-                        code.style.whiteSpace = 'pre-wrap';
-                        code.style.wordWrap = 'break-word';
+                        code.style.whiteSpace = 'nowrap';
+                        code.style.fontWeight = '600';
+                        code.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
                     });
                     
-                    // Mejorar bloques de código
-                    contentDiv.querySelectorAll('pre').forEach(pre => {
-                        pre.style.backgroundColor = '#f8f9fa';
-                        pre.style.border = '1px solid #e9ecef';
-                        pre.style.borderRadius = '6px';
-                        pre.style.padding = '16px';
-                        pre.style.margin = '12px 0';
+                    // Mejorar bloques de código - solo si no tienen clase CSS personalizada
+                    contentDiv.querySelectorAll('pre:not(.bot-code-block)').forEach(pre => {
+                        pre.style.backgroundColor = '#282c34';
+                        pre.style.border = '1px solid #3e4451';
+                        pre.style.borderRadius = '8px';
+                        pre.style.padding = '20px';
+                        pre.style.margin = '15px 0';
                         pre.style.overflow = 'auto';
                         pre.style.fontFamily = '"SFMono-Regular", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace';
-                        pre.style.fontSize = '0.9em';
-                        pre.style.lineHeight = '1.4';
-                        pre.style.whiteSpace = 'pre-wrap';
-                        pre.style.wordWrap = 'break-word';
+                        pre.style.fontSize = '0.85em';
+                        pre.style.lineHeight = '1.5';
+                        pre.style.color = '#abb2bf';
+                        pre.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                        pre.style.position = 'relative';
+                        
+                        // Estilos para código dentro del pre
+                        const codeInPre = pre.querySelector('code');
+                        if (codeInPre) {
+                            codeInPre.style.background = 'transparent';
+                            codeInPre.style.border = 'none';
+                            codeInPre.style.padding = '0';
+                            codeInPre.style.color = 'inherit';
+                            codeInPre.style.fontSize = 'inherit';
+                            codeInPre.style.whiteSpace = 'pre';
+                            codeInPre.style.borderRadius = '0';
+                            codeInPre.style.boxShadow = 'none';
+                        }
                     });
                     
                     // Mejorar citas

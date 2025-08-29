@@ -401,28 +401,446 @@ body {
     border: 1px solid rgba(0, 123, 255, 0.1);
 }
 
-.message.bot .bot-code {
+/* Estilos mejorados para código inline */
+.message.bot .bot-code,
+.message.bot code:not(pre code) {
     background-color: #f8f9fa !important;
     padding: 3px 8px !important;
     border-radius: 4px !important;
     font-family: 'SFMono-Regular', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
     font-size: 0.9em !important;
-    color: #e83e8c !important;
+    color: #d73a49 !important;
     border: 1px solid #e9ecef !important;
     white-space: nowrap;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
-.message.bot .bot-code-block {
-    background-color: #f8f9fa !important;
-    border: 1px solid #e9ecef !important;
+/* Estilos mejorados para bloques de código */
+.message.bot .bot-code-block,
+.message.bot pre {
+    background-color: #282c34 !important;
+    border: 1px solid #3e4451 !important;
     border-radius: 8px !important;
-    padding: 16px !important;
+    padding: 20px !important;
     margin: 15px 0 !important;
     overflow-x: auto !important;
     font-family: 'SFMono-Regular', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
     font-size: 0.85em !important;
-    line-height: 1.4 !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    line-height: 1.5 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    position: relative !important;
+    color: #abb2bf !important;
+}
+
+/* Código dentro de pre */
+.message.bot .bot-code-block code,
+.message.bot pre code {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    font-size: inherit !important;
+    white-space: pre !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Botón de copiar para bloques de código */
+.message.bot .bot-code-block::before,
+.message.bot pre::before {
+    content: var(--copy-text, "📋 Copiar");
+    position: absolute !important;
+    top: 8px !important;
+    right: 12px !important;
+    background: rgba(171, 178, 191, 0.1) !important;
+    color: #abb2bf !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    cursor: pointer !important;
+    opacity: 0 !important;
+    transition: all 0.2s ease !important;
+    z-index: 1 !important;
+    user-select: none !important;
+    pointer-events: auto !important;
+}
+
+.message.bot .bot-code-block:hover::before,
+.message.bot pre:hover::before {
+    opacity: 1 !important;
+}
+
+.message.bot .bot-code-block::before:hover,
+.message.bot pre::before:hover {
+    background: rgba(171, 178, 191, 0.2) !important;
+    color: #ffffff !important;
+}
+
+/* Estilos específicos para diferentes lenguajes */
+.message.bot .language-python {
+    border-left: 4px solid #3776ab !important;
+}
+
+.message.bot .language-javascript {
+    border-left: 4px solid #f7df1e !important;
+}
+
+.message.bot .language-java {
+    border-left: 4px solid #ed8b00 !important;
+}
+
+.message.bot .language-cpp, 
+.message.bot .language-c {
+    border-left: 4px solid #00599c !important;
+}
+
+.message.bot .language-sql {
+    border-left: 4px solid #336791 !important;
+}
+
+.message.bot .language-json {
+    border-left: 4px solid #000000 !important;
+}
+
+.message.bot .language-bash, 
+.message.bot .language-shell {
+    border-left: 4px solid #4eaa25 !important;
+}
+
+/* Indicador de lenguaje */
+.message.bot .bot-code-block[data-language]::after,
+.message.bot pre[data-language]::after {
+    content: attr(data-language);
+    position: absolute !important;
+    top: 8px !important;
+    left: 12px !important;
+    background: rgba(171, 178, 191, 0.1) !important;
+    color: #abb2bf !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    text-transform: uppercase !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Integración con Prism.js */
+.message.bot .bot-code-block .token.comment,
+.message.bot .bot-code-block .token.prolog,
+.message.bot .bot-code-block .token.doctype,
+.message.bot .bot-code-block .token.cdata {
+    color: #5c6370 !important;
+    font-style: italic !important;
+}
+
+.message.bot .bot-code-block .token.punctuation {
+    color: #abb2bf !important;
+}
+
+.message.bot .bot-code-block .token.property,
+.message.bot .bot-code-block .token.tag,
+.message.bot .bot-code-block .token.boolean,
+.message.bot .bot-code-block .token.number,
+.message.bot .bot-code-block .token.constant,
+.message.bot .bot-code-block .token.symbol,
+.message.bot .bot-code-block .token.deleted {
+    color: #d19a66 !important;
+}
+
+.message.bot .bot-code-block .token.selector,
+.message.bot .bot-code-block .token.attr-name,
+.message.bot .bot-code-block .token.string,
+.message.bot .bot-code-block .token.char,
+.message.bot .bot-code-block .token.builtin,
+.message.bot .bot-code-block .token.inserted {
+    color: #98c379 !important;
+}
+
+.message.bot .bot-code-block .token.operator,
+.message.bot .bot-code-block .token.entity,
+.message.bot .bot-code-block .token.url,
+.message.bot .bot-code-block .language-css .token.string,
+.message.bot .bot-code-block .style .token.string {
+    color: #56b6c2 !important;
+}
+
+.message.bot .bot-code-block .token.atrule,
+.message.bot .bot-code-block .token.attr-value,
+.message.bot .bot-code-block .token.keyword {
+    color: #c678dd !important;
+}
+
+.message.bot .bot-code-block .token.function,
+.message.bot .bot-code-block .token.class-name {
+    color: #61aeee !important;
+}
+
+.message.bot .bot-code-block .token.regex,
+.message.bot .bot-code-block .token.important,
+.message.bot .bot-code-block .token.variable {
+    color: #e06c75 !important;
+}
+
+.message.bot .bot-code-block .token.important,
+.message.bot .bot-code-block .token.bold {
+    font-weight: bold !important;
+}
+
+.message.bot .bot-code-block .token.italic {
+    font-style: italic !important;
+}
+
+/* Estilos para ecuaciones matemáticas con KaTeX */
+.message.bot .katex-display {
+    margin: 20px 0 !important;
+    padding: 15px !important;
+    background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%) !important;
+    border: 1px solid #e3f2fd !important;
+    border-radius: 8px !important;
+    overflow-x: auto !important;
+    text-align: center !important;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08) !important;
+    position: relative !important;
+}
+
+.message.bot .katex-display::before {
+    content: "📐 Ecuación";
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: rgba(33, 150, 243, 0.1);
+    color: #1976d2;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 1;
+}
+
+.message.bot .katex-display:hover::before {
+    opacity: 1;
+}
+
+.message.bot .katex {
+    font-size: 1.1em !important;
+}
+
+.message.bot .katex-display .katex {
+    font-size: 1.3em !important;
+    color: #1a237e !important;
+}
+
+/* Ecuaciones inline */
+.message.bot .katex.katex-inline {
+    background: rgba(33, 150, 243, 0.05) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    margin: 0 2px !important;
+    border: 1px solid rgba(33, 150, 243, 0.1) !important;
+    color: #1976d2 !important;
+    font-weight: 500 !important;
+}
+
+/* Hover effects para ecuaciones */
+.message.bot .katex-display:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 16px rgba(33, 150, 243, 0.15) !important;
+    transition: all 0.3s ease !important;
+    border-color: #bbdefb !important;
+}
+
+.message.bot .katex.katex-inline:hover {
+    background: rgba(33, 150, 243, 0.1) !important;
+    transform: scale(1.05) !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Responsivo para ecuaciones */
+@media (max-width: 768px) {
+    .message.bot .katex-display {
+        margin: 15px 0 !important;
+        padding: 12px !important;
+        font-size: 0.9em !important;
+    }
+    
+    .message.bot .katex-display .katex {
+        font-size: 1.1em !important;
+    }
+    
+    .message.bot .katex.katex-inline {
+        font-size: 0.9em !important;
+        padding: 1px 4px !important;
+    }
+}
+
+/* Animación para ecuaciones */
+.message.bot .katex-display {
+    animation: equationAppear 0.5s ease-out !important;
+}
+
+@keyframes equationAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Estilo para fracciones y símbolos especiales */
+.message.bot .katex .frac-line {
+    border-bottom-color: #1976d2 !important;
+}
+
+.message.bot .katex .sqrt .sqrt-line {
+    border-top-color: #1976d2 !important;
+}
+
+/* Selección de texto en ecuaciones */
+.message.bot .katex-display ::selection {
+    background-color: rgba(33, 150, 243, 0.2) !important;
+    color: inherit !important;
+}
+
+.message.bot .katex-display ::-moz-selection {
+    background-color: rgba(33, 150, 243, 0.2) !important;
+    color: inherit !important;
+}
+
+/* Mejoras adicionales para elementos de ejemplo */
+.message.bot .message-content strong {
+    color: #0056b3 !important;
+    font-weight: 600 !important;
+}
+
+.message.bot .message-content em {
+    background: rgba(33, 150, 243, 0.1) !important;
+    padding: 2px 4px !important;
+    border-radius: 3px !important;
+    color: #1976d2 !important;
+    font-style: normal !important;
+    font-weight: 500 !important;
+}
+
+/* Estilos especiales para lista de capacidades */
+.message.bot .message-content ul li {
+    padding: 4px 0 !important;
+    position: relative !important;
+}
+
+.message.bot .message-content ul li::before {
+    content: '→' !important;
+    color: #007bff !important;
+    font-weight: bold !important;
+    margin-right: 8px !important;
+    position: absolute !important;
+    left: -20px !important;
+}
+
+/* Estilo para scrollbar en bloques de código */
+.message.bot .bot-code-block::-webkit-scrollbar,
+.message.bot pre::-webkit-scrollbar {
+    height: 8px !important;
+    width: 8px !important;
+}
+
+.message.bot .bot-code-block::-webkit-scrollbar-track,
+.message.bot pre::-webkit-scrollbar-track {
+    background: #21252b !important;
+    border-radius: 4px !important;
+}
+
+.message.bot .bot-code-block::-webkit-scrollbar-thumb,
+.message.bot pre::-webkit-scrollbar-thumb {
+    background: #4b5263 !important;
+    border-radius: 4px !important;
+}
+
+.message.bot .bot-code-block::-webkit-scrollbar-thumb:hover,
+.message.bot pre::-webkit-scrollbar-thumb:hover {
+    background: #5c6370 !important;
+}
+
+/* Animaciones para código */
+.message.bot .bot-code-block,
+.message.bot pre {
+    animation: codeBlockAppear 0.4s ease-out !important;
+}
+
+@keyframes codeBlockAppear {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Mejoras para accesibilidad */
+.message.bot .bot-code-block:focus,
+.message.bot pre:focus {
+    outline: 2px solid #61aeee !important;
+    outline-offset: 2px !important;
+}
+
+/* Efecto de parpadeo para código copiado */
+.message.bot .bot-code-block.copied,
+.message.bot pre.copied {
+    animation: copyFlash 0.5s ease-out !important;
+}
+
+@keyframes copyFlash {
+    0% { background-color: #282c34; }
+    50% { background-color: #3e4451; }
+    100% { background-color: #282c34; }
+}
+
+/* Estilo para números de línea (opcional) */
+.message.bot .bot-code-block.line-numbers,
+.message.bot pre.line-numbers {
+    padding-left: 3.8em !important;
+    counter-reset: linenumber !important;
+}
+
+.message.bot .bot-code-block.line-numbers .line-numbers-rows,
+.message.bot pre.line-numbers .line-numbers-rows {
+    position: absolute !important;
+    pointer-events: none !important;
+    top: 20px !important;
+    left: 0 !important;
+    width: 3em !important;
+    letter-spacing: -1px !important;
+    border-right: 1px solid #3e4451 !important;
+    user-select: none !important;
+    counter-reset: linenumber !important;
+}
+
+.message.bot .bot-code-block.line-numbers .line-numbers-rows > span,
+.message.bot pre.line-numbers .line-numbers-rows > span {
+    pointer-events: none !important;
+    display: block !important;
+    counter-increment: linenumber !important;
+    color: #5c6370 !important;
+    text-align: right !important;
+    padding-right: 0.8em !important;
+    line-height: 1.5 !important;
+}
+
+.message.bot .bot-code-block.line-numbers .line-numbers-rows > span::before,
+.message.bot pre.line-numbers .line-numbers-rows > span::before {
+    content: counter(linenumber) !important;
 }
 
 .message.bot .bot-quote {
@@ -462,15 +880,32 @@ body {
 }
 
 /* Efectos hover para elementos interactivos */
-.message.bot .bot-code:hover {
+.message.bot .bot-code:hover,
+.message.bot code:not(pre code):hover {
     background-color: #e9ecef !important;
     transform: scale(1.02);
     transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
-.message.bot .bot-code-block:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.message.bot .bot-code-block:hover,
+.message.bot pre:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+    transform: translateY(-2px) !important;
     transition: all 0.3s ease;
+}
+
+/* Selección de texto en bloques de código */
+.message.bot .bot-code-block ::selection,
+.message.bot pre ::selection {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: inherit !important;
+}
+
+.message.bot .bot-code-block ::-moz-selection,
+.message.bot pre ::-moz-selection {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: inherit !important;
 }
 
 /* Mejoras para dispositivos móviles */
@@ -485,13 +920,32 @@ body {
         padding-right: 8px;
     }
     
-    .message.bot .bot-code-block {
+    .message.bot .bot-code-block,
+    .message.bot pre {
         font-size: 0.8em !important;
-        padding: 12px !important;
+        padding: 16px 12px !important;
+        margin: 12px 0 !important;
+        border-radius: 6px !important;
+    }
+    
+    .message.bot .bot-code,
+    .message.bot code:not(pre code) {
+        font-size: 0.85em !important;
+        padding: 2px 6px !important;
+        white-space: pre-wrap !important;
+        word-break: break-all !important;
     }
     
     .message.bot .bot-heading {
         font-size: 1.05em !important;
+    }
+    
+    /* Ocultar indicadores en móviles para ahorrar espacio */
+    .message.bot .bot-code-block::before,
+    .message.bot .bot-code-block::after,
+    .message.bot pre::before,
+    .message.bot pre::after {
+        display: none !important;
     }
 }
 

@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatBot IA UNAB</title>
     <link rel="stylesheet" href="assets/css/index.css">
+    <!-- Cargar KaTeX para ecuaciones matemáticas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    <!-- Cargar Prism.js para syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <!-- Cargar componentes de lenguajes comunes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-powershell.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
     <!-- Cargar marked.js con configuración mejorada -->
     <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
     <style>
@@ -146,7 +165,166 @@
                 headerIds: false,
                 mangle: false,
                 pedantic: false,
-                silent: false
+                silent: false,
+                highlight: function(code, lang) {
+                    // Si Prism está disponible y el lenguaje es soportado
+                    if (typeof Prism !== 'undefined' && lang && Prism.languages[lang]) {
+                        try {
+                            return Prism.highlight(code, Prism.languages[lang], lang);
+                        } catch (e) {
+                            console.warn('Error highlighting code:', e);
+                            return code;
+                        }
+                    }
+                    return code;
+                }
+            });
+            
+            // Configurar un renderer personalizado para mejor manejo de código
+            const renderer = new marked.Renderer();
+            
+            // Personalizar renderizado de bloques de código
+            renderer.code = function(code, language, escaped) {
+                const lang = language || 'text';
+                const langClass = lang ? ` language-${lang}` : '';
+                const dataLang = lang ? ` data-language="${lang}"` : '';
+                
+                // Escapar HTML si no está ya escapado
+                const escapedCode = escaped ? code : escapeHtml(code);
+                
+                return `<pre class="bot-code-block${langClass}"${dataLang}><code class="${langClass}">${escapedCode}</code></pre>`;
+            };
+            
+            // Personalizar renderizado de código inline
+            renderer.codespan = function(code) {
+                return `<code class="bot-code">${escapeHtml(code)}</code>`;
+            };
+            
+            marked.setOptions({ renderer: renderer });
+        }
+        
+        // Función helper para escapar HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Función para procesar highlighting después del renderizado
+        function highlightCodeBlocks(container) {
+            if (typeof Prism !== 'undefined') {
+                // Procesar todos los bloques de código en el contenedor
+                const codeBlocks = container.querySelectorAll('pre code[class*="language-"]');
+                codeBlocks.forEach(block => {
+                    try {
+                        Prism.highlightElement(block);
+                    } catch (e) {
+                        console.warn('Error highlighting block:', e);
+                    }
+                });
+            }
+        }
+        
+        // Función para renderizar ecuaciones matemáticas con KaTeX
+        function renderMathEquations(container) {
+            if (typeof katex !== 'undefined' && typeof renderMathInElement !== 'undefined') {
+                try {
+                    renderMathInElement(container, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '\\[', right: '\\]', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false}
+                        ],
+                        throwOnError: false,
+                        errorColor: '#cc0000',
+                        strict: false,
+                        trust: false,
+                        output: 'html',
+                        fleqn: false,
+                        leqno: false,
+                        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                        ignoredClasses: ['no-katex', 'bot-code', 'bot-code-block']
+                    });
+                    
+                    // Agregar clase especial para ecuaciones inline
+                    container.querySelectorAll('.katex:not(.katex-display)').forEach(eq => {
+                        eq.classList.add('katex-inline');
+                    });
+                    
+                } catch (e) {
+                    console.warn('Error rendering math equations:', e);
+                }
+            }
+        }
+        
+        // Función para agregar funcionalidad de copiar código
+        function addCopyFunctionality(container) {
+            const codeBlocks = container.querySelectorAll('.bot-code-block, pre');
+            codeBlocks.forEach(block => {
+                // Agregar evento click para copiar
+                block.addEventListener('click', function(e) {
+                    // Solo proceder si se hace click en el área del botón copiar
+                    const rect = this.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    // Área aproximada del botón copiar (esquina superior derecha)
+                    if (clickX > rect.width - 80 && clickY < 30) {
+                        const codeElement = this.querySelector('code') || this;
+                        const textToCopy = codeElement.textContent || codeElement.innerText;
+                        
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            // Cambiar temporalmente el texto del pseudo-elemento
+                            this.style.setProperty('--copy-text', '"✓ Copiado"');
+                            setTimeout(() => {
+                                this.style.removeProperty('--copy-text');
+                            }, 2000);
+                        }).catch(err => {
+                            console.error('Error copiando código:', err);
+                        });
+                    }
+                });
+            });
+        }
+        
+        // Función para agregar funcionalidad de copiar ecuaciones
+        function addMathCopyFunctionality(container) {
+            const mathBlocks = container.querySelectorAll('.katex-display');
+            mathBlocks.forEach(block => {
+                // Agregar evento click para copiar ecuaciones
+                block.addEventListener('click', function(e) {
+                    // Solo proceder si se hace click en el área del botón copiar
+                    const rect = this.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    // Área aproximada del botón copiar (esquina superior derecha)
+                    if (clickX > rect.width - 80 && clickY < 30) {
+                        // Buscar la anotación original de LaTeX en el atributo data o texto
+                        let latexCode = this.getAttribute('data-latex') || '';
+                        
+                        // Si no hay atributo, tratar de extraer del HTML
+                        if (!latexCode) {
+                            const katexElement = this.querySelector('.katex');
+                            if (katexElement) {
+                                latexCode = katexElement.getAttribute('data-latex') || katexElement.textContent || '';
+                            }
+                        }
+                        
+                        if (latexCode) {
+                            navigator.clipboard.writeText(`$$${latexCode}$$`).then(() => {
+                                // Cambiar temporalmente el texto del pseudo-elemento
+                                this.style.setProperty('--copy-text', '"✓ Copiado"');
+                                setTimeout(() => {
+                                    this.style.removeProperty('--copy-text');
+                                }, 2000);
+                            }).catch(err => {
+                                console.error('Error copiando ecuación:', err);
+                            });
+                        }
+                    }
+                });
             });
         }
     </script>
