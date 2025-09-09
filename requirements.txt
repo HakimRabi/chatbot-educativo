@@ -20,6 +20,7 @@ python-dotenv==1.0.0
 requests==2.31.0
 numpy==1.24.3
 pandas==2.0.3
+psutil==5.9.0
 
 # Logging and debugging
 colorlog==6.8.0

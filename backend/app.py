@@ -12,6 +12,23 @@ import uuid
 from pydantic import BaseModel
 from datetime import datetime
 
+# Sistema de métricas - FASE 1
+try:
+    from metrics import (
+        start_request_tracking, 
+        end_request_tracking, 
+        record_model_switch,
+        get_metrics_summary,
+        get_bottleneck_analysis
+    )
+    METRICS_ENABLED = True
+    logger = logging.getLogger("chatbot_app")
+    logger.info("🔍 Sistema de métricas habilitado")
+except Exception as e:
+    METRICS_ENABLED = False
+    logger = logging.getLogger("chatbot_app")
+    logger.warning(f"⚠️ Sistema de métricas deshabilitado: {e}")
+
 # Configurar logging primero
 logging.basicConfig(
     level=logging.INFO,
@@ -69,6 +86,15 @@ def serve_dashboard():
 @app.get("/pages/dashboard")
 def serve_dashboard_pages():
     return FileResponse("../frontend/pages/dashboard.html")
+
+# FASE 1: Ruta para dashboard de métricas
+@app.get("/metrics")
+def serve_metrics_dashboard():
+    return FileResponse("../frontend/pages/metrics.html")
+
+@app.get("/pages/metrics")
+def serve_metrics_pages():
+    return FileResponse("../frontend/pages/metrics.html")
 
 @app.on_event("startup")
 async def startup_event():
@@ -253,25 +279,60 @@ async def check_connection():
 # Endpoint básico de preguntas
 @app.post("/preguntar")
 async def preguntar_basic(pregunta: Pregunta):
+    request_id = None
     try:
         start_time = time.time()
         respuesta = None
+        
+        # FASE 1: Iniciar tracking de métricas
+        if METRICS_ENABLED:
+            model_used = pregunta.modelo or "llama3"
+            request_id = start_request_tracking(
+                endpoint="/preguntar",
+                model_used=model_used,
+                user_id=pregunta.userId or "anonymous",
+                question_length=len(pregunta.texto)
+            )
+            logger.info(f"📊 Tracking iniciado: {request_id}")
         
         # Verificar si el sistema IA está listo
         if ai_system_ready and ai_system_instance:
             try:
                 logger.info(f"Procesando pregunta con IA: {pregunta.texto}")
                 
+                # Tracking de tiempo de vector search y LLM
+                vector_start = time.time()
+                
                 # Ejecutar procesamiento de pregunta
                 loop = asyncio.get_event_loop()
                 respuesta = await loop.run_in_executor(executor, ai_system_instance.process_question, pregunta)
                 
+                vector_time = time.time() - vector_start
                 processing_time = time.time() - start_time
+                
                 logger.info(f"Respuesta IA generada en {processing_time:.2f}s")
+                
+                # FASE 1: Finalizar tracking exitoso
+                if METRICS_ENABLED and request_id:
+                    end_request_tracking(
+                        request_id=request_id,
+                        status="success",
+                        response_length=len(respuesta) if respuesta else 0,
+                        vector_search_time=vector_time,
+                        llm_processing_time=processing_time
+                    )
                     
             except Exception as ai_error:
                 logger.error(f"Error en sistema IA: {ai_error}")
                 respuesta = None
+                
+                # FASE 1: Tracking de error en IA
+                if METRICS_ENABLED and request_id:
+                    end_request_tracking(
+                        request_id=request_id,
+                        status="error",
+                        error_details=f"AI Error: {str(ai_error)[:200]}"
+                    )
         else:
             logger.info("Sistema IA no disponible, usando respuesta básica")
         
@@ -279,6 +340,15 @@ async def preguntar_basic(pregunta: Pregunta):
         if not respuesta:
             respuesta = generar_respuesta_rapida(pregunta.texto)
             logger.info("Usando respuesta básica")
+            
+            # FASE 1: Tracking de respuesta básica
+            if METRICS_ENABLED and request_id:
+                end_request_tracking(
+                    request_id=request_id,
+                    status="fallback",
+                    response_length=len(respuesta),
+                    error_details="AI system not available - fallback response"
+                )
         
         # Validar que la respuesta no esté vacía
         if not respuesta or respuesta.strip() == "":
@@ -298,6 +368,15 @@ async def preguntar_basic(pregunta: Pregunta):
         
     except Exception as e:
         logger.error(f"Error en preguntar_basic: {e}")
+        
+        # FASE 1: Tracking de error general
+        if METRICS_ENABLED and request_id:
+            end_request_tracking(
+                request_id=request_id,
+                status="error",
+                error_details=f"General Error: {str(e)[:200]}"
+            )
+        
         return {"respuesta": "Lo siento, ocurrió un error inesperado. Por favor, inténtalo de nuevo.", "status": "error"}
 
 @app.get("/ai_status")
@@ -392,6 +471,11 @@ async def switch_model(request: Request):
             return {"success": False, "error": "Modelo no especificado"}
             
         if ai_system_instance:
+            # FASE 1: Registrar cambio de modelo en métricas
+            current_model = ai_system_instance.get_current_model()
+            if METRICS_ENABLED:
+                record_model_switch(current_model, model_name)
+            
             success = ai_system_instance.switch_model(model_name)
             if success:
                 # Obtener estado del contexto después del cambio
@@ -1010,19 +1094,174 @@ def get_ai_system_info():
                 "fragmentos_count": 0,
                 "llm_available": False,
                 "cadena_available": False,
-                "is_ready": False
+                "error_details": "Sistema no disponible"
             }
     except Exception as e:
-        logger.error(f"Error obteniendo info del sistema IA: {e}")
         return {
+            "error": str(e),
             "using_chroma": False,
             "using_vector_db": False,
             "documentos_count": 0,
             "fragmentos_count": 0,
             "llm_available": False,
-            "cadena_available": False,
-            "is_ready": False
+            "cadena_available": False
         }
+
+# ===============================================
+# ENDPOINTS DE MÉTRICAS - FASE 1
+# ===============================================
+
+@app.get("/metrics/summary")
+async def get_metrics_summary_endpoint():
+    """Obtiene resumen completo de métricas del sistema"""
+    try:
+        if not METRICS_ENABLED:
+            return {"error": "Sistema de métricas no disponible", "enabled": False}
+        
+        summary = get_metrics_summary()
+        return {
+            "success": True,
+            "enabled": True,
+            "data": summary,
+            "message": "Métricas obtenidas exitosamente"
+        }
+    except Exception as e:
+        logger.error(f"Error obteniendo métricas: {e}")
+        return {"success": False, "error": str(e), "enabled": METRICS_ENABLED}
+
+@app.get("/metrics/bottlenecks")
+async def get_bottleneck_analysis_endpoint():
+    """Analiza cuellos de botella y recomienda optimizaciones"""
+    try:
+        if not METRICS_ENABLED:
+            return {"error": "Sistema de métricas no disponible", "enabled": False}
+        
+        analysis = get_bottleneck_analysis()
+        return {
+            "success": True,
+            "enabled": True,
+            "analysis": analysis,
+            "message": "Análisis de cuellos de botella completado"
+        }
+    except Exception as e:
+        logger.error(f"Error analizando cuellos de botella: {e}")
+        return {"success": False, "error": str(e), "enabled": METRICS_ENABLED}
+
+@app.get("/metrics/performance")
+async def get_performance_metrics():
+    """Obtiene métricas específicas de rendimiento"""
+    try:
+        if not METRICS_ENABLED:
+            return {"error": "Sistema de métricas no disponible", "enabled": False}
+        
+        summary = get_metrics_summary()
+        
+        # Extraer solo métricas de rendimiento
+        performance_data = {
+            "response_times": summary.get("performance", {}),
+            "system_resources": summary.get("system", {}),
+            "model_performance": summary.get("models", {}),
+            "active_requests": summary.get("general", {}).get("active_requests", 0),
+            "error_rate": summary.get("general", {}).get("error_rate", 0),
+            "timestamp": summary.get("timestamp")
+        }
+        
+        return {
+            "success": True,
+            "enabled": True,
+            "performance": performance_data,
+            "recommendations": get_performance_recommendations(performance_data)
+        }
+    except Exception as e:
+        logger.error(f"Error obteniendo métricas de rendimiento: {e}")
+        return {"success": False, "error": str(e), "enabled": METRICS_ENABLED}
+
+@app.get("/metrics/queue-readiness")
+async def get_queue_readiness():
+    """Evalúa si el sistema está listo para implementar colas"""
+    try:
+        if not METRICS_ENABLED:
+            return {"error": "Sistema de métricas no disponible", "enabled": False}
+        
+        bottleneck_analysis = get_bottleneck_analysis()
+        summary = get_metrics_summary()
+        
+        # Criterios para determinar necesidad de cola
+        queue_criteria = {
+            "high_response_times": summary.get("performance", {}).get("avg_response_time_hour", 0) > 3.0,
+            "high_error_rate": summary.get("general", {}).get("error_rate", 0) > 5.0,
+            "many_active_requests": summary.get("general", {}).get("active_requests", 0) > 3,
+            "high_cpu_usage": summary.get("system", {}).get("cpu_percent", 0) > 70,
+            "slow_requests_detected": len([r for r in bottleneck_analysis.get("performance_analysis", {}).get("slow_requests_count", 0)]) > 5
+        }
+        
+        needs_queue = any(queue_criteria.values())
+        
+        priority_level = "ALTA" if sum(queue_criteria.values()) >= 3 else "MEDIA" if any(queue_criteria.values()) else "BAJA"
+        
+        recommendations = []
+        if queue_criteria["high_response_times"]:
+            recommendations.append("🚀 Implementar cola de prioridad para requests lentas")
+        if queue_criteria["high_error_rate"]:
+            recommendations.append("🔄 Sistema de reintentos con backoff exponencial")
+        if queue_criteria["many_active_requests"]:
+            recommendations.append("⚡ Pool de workers dedicados")
+        if queue_criteria["high_cpu_usage"]:
+            recommendations.append("💻 Distribución de carga entre procesos")
+        
+        return {
+            "success": True,
+            "queue_readiness": {
+                "needs_queue": needs_queue,
+                "priority_level": priority_level,
+                "criteria_met": queue_criteria,
+                "recommendations": recommendations,
+                "estimated_improvement": "30-60% reducción en tiempo de respuesta" if needs_queue else "Mejoras menores esperadas",
+                "next_phase_ready": needs_queue
+            },
+            "current_metrics": {
+                "avg_response_time": summary.get("performance", {}).get("avg_response_time_hour", 0),
+                "error_rate": summary.get("general", {}).get("error_rate", 0),
+                "active_requests": summary.get("general", {}).get("active_requests", 0),
+                "cpu_usage": summary.get("system", {}).get("cpu_percent", 0)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error evaluando readiness para cola: {e}")
+        return {"success": False, "error": str(e), "enabled": METRICS_ENABLED}
+
+def get_performance_recommendations(performance_data):
+    """Genera recomendaciones basadas en métricas de rendimiento"""
+    recommendations = []
+    
+    avg_time = performance_data.get("response_times", {}).get("avg_response_time_hour", 0)
+    error_rate = performance_data.get("error_rate", 0)
+    cpu_usage = performance_data.get("system_resources", {}).get("cpu_percent", 0)
+    memory_usage = performance_data.get("system_resources", {}).get("memory_percent", 0)
+    
+    if avg_time > 5:
+        recommendations.append("⏱️ Tiempos de respuesta altos - considerar optimización de consultas")
+    if avg_time > 10:
+        recommendations.append("🚨 Tiempos críticos - implementar cola urgentemente")
+    
+    if error_rate > 5:
+        recommendations.append("🔧 Alta tasa de errores - revisar estabilidad del sistema")
+    if error_rate > 10:
+        recommendations.append("⚠️ Tasa de errores crítica - implementar circuit breaker")
+    
+    if cpu_usage > 80:
+        recommendations.append("🔥 CPU sobrecargado - distribuir carga")
+    if memory_usage > 85:
+        recommendations.append("💾 Memoria alta - optimizar cache y liberación de recursos")
+    
+    if not recommendations:
+        recommendations.append("✅ Sistema funcionando dentro de parámetros normales")
+    
+    return recommendations
+
+# ===============================================
+# CONFIGURACIÓN Y STARTUP DEL SERVIDOR
+# ===============================================
 
 # Inicialización del servidor
 if __name__ == "__main__":

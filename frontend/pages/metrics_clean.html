@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Métricas - Sistema de Monitoreo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Header */
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .header-icon {
+            width: 2rem;
+            height: 2rem;
+            background: #3b82f6;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #64748b;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border: 1px solid #3b82f6;
+            background: #3b82f6;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+
+        /* Main Content */
+        .main {
+            padding: 2rem 0;
+        }
+
+        /* Loading, Error, Content States */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #64748b;
+        }
+
+        .loading-spinner {
+            width: 2rem;
+            height: 2rem;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .error-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Cards */
+        .card {
+            background: #ffffff;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            padding: 1.5rem 1.5rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.25rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: #ffffff;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e8f0;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s;
+        }
+
+        .metric-card:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .metric-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metric-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            background: #f1f5f9;
+            border-radius: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .metric-trend {
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+
+        .trend-up {
+            background: #fef3f2;
+            color: #dc2626;
+        }
+
+        .trend-down {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+
+        .trend-stable {
+            background: #fefce8;
+            color: #ca8a04;
+        }
+
+        /* Status Indicators */
+        .status-indicator {
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-success { background: #10b981; }
+        .status-warning { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+
+        /* Queue Readiness Section */
+        .queue-readiness {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .queue-readiness h3 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .priority-badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+            display: inline-block;
+        }
+
+        .priority-alta { 
+            background: rgba(239, 68, 68, 0.9); 
+            color: white; 
+        }
+        .priority-media { 
+            background: rgba(245, 158, 11, 0.9); 
+            color: white; 
+        }
+        .priority-baja { 
+            background: rgba(16, 185, 129, 0.9); 
+            color: white; 
+        }
+
+        /* Lists and Recommendations */
+        .recommendation-list {
+            list-style: none;
+        }
+
+        .recommendation-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            background: #f8fafc;
+            border-radius: 0.5rem;
+            border-left: 3px solid #3b82f6;
+            font-size: 0.875rem;
+            color: #475569;
+        }
+
+        .criteria-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .criteria-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+
+        .criteria-check {
+            margin-right: 0.5rem;
+            font-weight: 600;
+        }
+
+        .criteria-check.success { color: #16a34a; }
+        .criteria-check.error { color: #dc2626; }
+
+        /* Analysis Cards */
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .analysis-item {
+            text-align: center;
+        }
+
+        .analysis-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .analysis-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .metric-value {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="header-title">
+                    <div class="header-icon">M</div>
+                    <h1>Dashboard de Métricas del Sistema</h1>
+                </div>
+                <nav class="nav-links">
+                    <a href="/" class="nav-link">Inicio</a>
+                    <a href="/pages/dashboard.html" class="nav-link">Dashboard Principal</a>
+                    <button class="btn" onclick="refreshMetrics()">
+                        Actualizar Datos
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div id="loading" class="loading">
+                <div class="loading-spinner"></div>
+                <h2>Cargando métricas del sistema...</h2>
+                <p>Por favor espere mientras recopilamos los datos</p>
+            </div>
+
+            <div id="error" class="error hidden">
+                <div class="error-title">Error al cargar métricas</div>
+                <p id="error-message"></p>
+            </div>
+
+            <div id="metrics-content" class="hidden">
+                <!-- Queue Readiness Alert -->
+                <div id="queue-readiness" class="queue-readiness">
+                    <h3>Evaluación para Sistema de Colas</h3>
+                    <div id="queue-status"></div>
+                </div>
+
+                <!-- Main Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">
+                                <div class="metric-icon">S</div>
+                                Estado del Sistema
+                            </div>
+                            <span class="status-indicator" id="system-status"></span>
+                        </div>
+                        <div class="metric-value" id="system-health">---</div>
+                        <div class="metric-label">Estado general del sistema</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">
+                                <div class="metric-icon">T</div>
+                                Tiempo de Respuesta
+                            </div>
+                        </div>
+                        <div class="metric-value" id="avg-response-time">---</div>
+                        <div class="metric-label">Promedio última hora (segundos)</div>
+                        <div class="metric-trend trend-stable" id="response-trend">Estable</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">
+                                <div class="metric-icon">R</div>
+                                Requests Totales
+                            </div>
+                        </div>
+                        <div class="metric-value" id="total-requests">---</div>
+                        <div class="metric-label">Desde inicio del sistema</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">
+                                <div class="metric-icon">E</div>
+                                Tasa de Errores
+                            </div>
+                        </div>
+                        <div class="metric-value" id="error-rate">---</div>
+                        <div class="metric-label">Porcentaje de errores</div>
+                        <div class="metric-trend trend-down" id="error-trend">Bajo</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">
+                                <div class="metric-icon">A</div>
+                                Requests Activas
+                            </div>
+                        </div>
+                        <div class="metric-value" id="active-requests">---</div>
+                        <div class="metric-label">En procesamiento actual</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">
+                                <div class="metric-icon">C</div>
+                                Uso de CPU
+                            </div>
+                        </div>
+                        <div class="metric-value" id="cpu-usage">---</div>
+                        <div class="metric-label">Porcentaje de CPU utilizado</div>
+                        <div class="metric-trend trend-stable" id="cpu-trend">Normal</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">
+                                <div class="metric-icon">M</div>
+                                Uso de Memoria
+                            </div>
+                        </div>
+                        <div class="metric-value" id="memory-usage">---</div>
+                        <div class="metric-label">Porcentaje de RAM utilizada</div>
+                        <div class="metric-trend trend-stable" id="memory-trend">Normal</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-title">
+                                <div class="metric-icon">SW</div>
+                                Cambios de Modelo
+                            </div>
+                        </div>
+                        <div class="metric-value" id="model-switches">---</div>
+                        <div class="metric-label">Switcheos realizados</div>
+                    </div>
+                </div>
+
+                <!-- Performance Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Rendimiento por Modelo</h3>
+                        <p class="card-subtitle">Comparación de tiempo de respuesta y número de requests</p>
+                    </div>
+                    <div class="card-content">
+                        <canvas id="performance-chart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- System Recommendations -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recomendaciones del Sistema</h3>
+                        <p class="card-subtitle">Sugerencias para optimizar el rendimiento</p>
+                    </div>
+                    <div class="card-content">
+                        <ul id="recommendations-list" class="recommendation-list"></ul>
+                    </div>
+                </div>
+
+                <!-- Bottleneck Analysis -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Análisis de Cuellos de Botella</h3>
+                        <p class="card-subtitle">Identificación de puntos de mejora en el sistema</p>
+                    </div>
+                    <div class="card-content">
+                        <div id="bottleneck-analysis"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let systemMetrics = null;
+        let chartInstance = null;
+
+        async function loadMetrics() {
+            try {
+                showLoading();
+                hideError();
+                hideContent();
+
+                const [summaryResponse, bottleneckResponse, queueResponse] = await Promise.all([
+                    fetch('/metrics/summary'),
+                    fetch('/metrics/bottlenecks'),
+                    fetch('/metrics/queue-readiness')
+                ]);
+
+                const summaryData = await summaryResponse.json();
+                const bottleneckData = await bottleneckResponse.json();
+                const queueData = await queueResponse.json();
+
+                if (!summaryData.success) {
+                    throw new Error(summaryData.error || 'Error desconocido al cargar métricas');
+                }
+
+                systemMetrics = {
+                    summary: summaryData.data,
+                    bottlenecks: bottleneckData.success ? bottleneckData.analysis : null,
+                    queueReadiness: queueData.success ? queueData.queue_readiness : null
+                };
+
+                updateUI();
+                hideLoading();
+                showContent();
+
+            } catch (error) {
+                console.error('Error cargando métricas:', error);
+                hideLoading();
+                showError(error.message);
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('error').classList.remove('hidden');
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.add('hidden');
+        }
+
+        function showContent() {
+            document.getElementById('metrics-content').classList.remove('hidden');
+        }
+
+        function hideContent() {
+            document.getElementById('metrics-content').classList.add('hidden');
+        }
+
+        function updateUI() {
+            if (!systemMetrics) return;
+
+            const { summary, bottlenecks, queueReadiness } = systemMetrics;
+
+            updateMainMetrics(summary);
+            updateSystemStatus(summary);
+            updateQueueReadiness(queueReadiness);
+            updatePerformanceChart(summary);
+            updateRecommendations(bottlenecks);
+            updateBottleneckAnalysis(bottlenecks);
+        }
+
+        function updateMainMetrics(summary) {
+            const performance = summary.performance || {};
+            const general = summary.general || {};
+            const system = summary.system || {};
+
+            const avgTime = (performance.avg_response_time_hour || 0).toFixed(2);
+            document.getElementById('avg-response-time').textContent = avgTime;
+            updateTrend('response-trend', avgTime, 5);
+            
+            document.getElementById('total-requests').textContent = 
+                (general.total_requests || 0).toLocaleString();
+            
+            const errorRate = (general.error_rate || 0).toFixed(1);
+            document.getElementById('error-rate').textContent = errorRate + '%';
+            updateTrend('error-trend', errorRate, 5);
+            
+            document.getElementById('active-requests').textContent = 
+                general.active_requests || 0;
+            
+            const cpuUsage = (system.cpu_percent || 0).toFixed(1);
+            document.getElementById('cpu-usage').textContent = cpuUsage + '%';
+            updateTrend('cpu-trend', cpuUsage, 70);
+            
+            const memoryUsage = (system.memory_percent || 0).toFixed(1);
+            document.getElementById('memory-usage').textContent = memoryUsage + '%';
+            updateTrend('memory-trend', memoryUsage, 80);
+            
+            document.getElementById('model-switches').textContent = 
+                general.model_switches || 0;
+        }
+
+        function updateTrend(elementId, value, threshold) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            const numValue = parseFloat(value);
+            element.className = 'metric-trend ';
+            
+            if (numValue > threshold * 1.5) {
+                element.className += 'trend-up';
+                element.textContent = 'Alto';
+            } else if (numValue > threshold) {
+                element.className += 'trend-stable';
+                element.textContent = 'Moderado';
+            } else {
+                element.className += 'trend-down';
+                element.textContent = 'Normal';
+            }
+        }
+
+        function updateSystemStatus(summary) {
+            const performance = summary.performance || {};
+            const general = summary.general || {};
+            const system = summary.system || {};
+
+            let status = 'success';
+            let statusText = 'Óptimo';
+
+            if (performance.avg_response_time_hour > 10 || 
+                general.error_rate > 10 || 
+                system.cpu_percent > 90) {
+                status = 'error';
+                statusText = 'Crítico';
+            } else if (performance.avg_response_time_hour > 5 || 
+                       general.error_rate > 5 || 
+                       system.cpu_percent > 70) {
+                status = 'warning';
+                statusText = 'Advertencia';
+            }
+
+            document.getElementById('system-status').className = `status-indicator status-${status}`;
+            document.getElementById('system-health').textContent = statusText;
+        }
+
+        function updateQueueReadiness(queueReadiness) {
+            if (!queueReadiness) {
+                document.getElementById('queue-readiness').style.display = 'none';
+                return;
+            }
+
+            const statusDiv = document.getElementById('queue-status');
+            const needsQueue = queueReadiness.needs_queue;
+            const priority = queueReadiness.priority_level;
+            const priorityClass = `priority-${priority.toLowerCase()}`;
+            
+            statusDiv.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">
+                        Estado: ${needsQueue ? 'Sistema necesita optimización con colas' : 'Sistema funcionando correctamente'}
+                    </h4>
+                    <p style="margin-bottom: 0.5rem;">
+                        Prioridad de implementación: 
+                        <span class="${priorityClass} priority-badge">${priority}</span>
+                    </p>
+                    <p style="margin-bottom: 0.5rem;">
+                        <strong>Mejora estimada:</strong> ${queueReadiness.estimated_improvement}
+                    </p>
+                    <p style="margin-bottom: 1rem;">
+                        <strong>Listo para Fase 2:</strong> ${queueReadiness.next_phase_ready ? 'Sí, proceder' : 'Monitorear más tiempo'}
+                    </p>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <h5 style="font-weight: 600; margin-bottom: 0.75rem;">Criterios de evaluación:</h5>
+                    <div class="criteria-grid">
+                        ${Object.entries(queueReadiness.criteria_met).map(([key, value]) => 
+                            `<div class="criteria-item">
+                                <span class="criteria-check ${value ? 'success' : 'error'}">${value ? '✓' : '✗'}</span>
+                                <span>${formatCriteriaKey(key)}</span>
+                            </div>`
+                        ).join('')}
+                    </div>
+                </div>
+                
+                <div>
+                    <h5 style="font-weight: 600; margin-bottom: 0.75rem;">Recomendaciones prioritarias:</h5>
+                    <ul style="list-style: none; padding: 0;">
+                        ${queueReadiness.recommendations.map(rec => 
+                            `<li style="margin-bottom: 0.5rem; padding-left: 1rem; position: relative;">
+                                <span style="position: absolute; left: 0;">•</span>
+                                ${rec}
+                            </li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        function formatCriteriaKey(key) {
+            const formatMap = {
+                'high_response_times': 'Tiempos de respuesta altos',
+                'high_error_rate': 'Tasa de errores elevada',
+                'many_active_requests': 'Muchas requests activas',
+                'high_cpu_usage': 'Uso alto de CPU',
+                'slow_requests_detected': 'Requests lentas detectadas'
+            };
+            return formatMap[key] || key.replace(/_/g, ' ');
+        }
+
+        function updatePerformanceChart(summary) {
+            const models = summary.models || {};
+            const ctx = document.getElementById('performance-chart').getContext('2d');
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const modelNames = Object.keys(models);
+            const avgTimes = modelNames.map(model => {
+                const stats = models[model];
+                return stats.count > 0 ? (stats.total_time / stats.count).toFixed(2) : 0;
+            });
+            const requestCounts = modelNames.map(model => models[model].count || 0);
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: modelNames.length > 0 ? modelNames : ['Sin datos'],
+                    datasets: [
+                        {
+                            label: 'Tiempo Promedio (s)',
+                            data: avgTimes.length > 0 ? avgTimes : [0],
+                            backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Número de Requests',
+                            data: requestCounts.length > 0 ? requestCounts : [0],
+                            backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Tiempo (segundos)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Número de Requests'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateRecommendations(bottlenecks) {
+            const recommendations = bottlenecks?.recommendations || [];
+            const recommendationsList = document.getElementById('recommendations-list');
+
+            if (recommendations.length === 0) {
+                recommendationsList.innerHTML = `
+                    <li class="recommendation-item">
+                        No hay recomendaciones específicas en este momento. 
+                        El sistema está funcionando dentro de parámetros normales.
+                    </li>`;
+                return;
+            }
+
+            recommendationsList.innerHTML = recommendations.map(rec => 
+                `<li class="recommendation-item">${rec}</li>`
+            ).join('');
+        }
+
+        function updateBottleneckAnalysis(bottlenecks) {
+            if (!bottlenecks) {
+                document.getElementById('bottleneck-analysis').innerHTML = 
+                    '<p style="color: #64748b;">No hay datos de análisis disponibles.</p>';
+                return;
+            }
+
+            const analysis = bottlenecks.performance_analysis || {};
+            const errorAnalysis = bottlenecks.error_analysis || {};
+            const queueSuggestions = bottlenecks.queue_readiness || {};
+            
+            const analysisDiv = document.getElementById('bottleneck-analysis');
+
+            analysisDiv.innerHTML = `
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">Análisis de Rendimiento</h4>
+                    <div class="analysis-grid">
+                        <div class="analysis-item">
+                            <div class="analysis-value">${analysis.total_requests_analyzed || 0}</div>
+                            <div class="analysis-label">Requests analizadas</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-value">${analysis.slow_requests_count || 0}</div>
+                            <div class="analysis-label">Requests lentas (${analysis.slow_requests_percentage || 0}%)</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-value">${analysis.avg_duration || 0}s</div>
+                            <div class="analysis-label">Tiempo promedio</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-value">P95: ${analysis.p95_duration || 0}s</div>
+                            <div class="analysis-label">P99: ${analysis.p99_duration || 0}s</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">Análisis de Errores</h4>
+                    <div class="analysis-grid">
+                        <div class="analysis-item">
+                            <div class="analysis-value">${errorAnalysis.total_errors || 0}</div>
+                            <div class="analysis-label">Total de errores</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-value">${errorAnalysis.error_rate || 0}%</div>
+                            <div class="analysis-label">Tasa de errores</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b;">Evaluación para Sistema de Colas</h4>
+                    <p style="margin-bottom: 0.5rem;">
+                        <strong>¿Necesita implementar cola?</strong> 
+                        ${queueSuggestions.needs_queue ? 'Sí, recomendado' : 'No necesario actualmente'}
+                    </p>
+                    <p style="margin-bottom: 1rem;">
+                        <strong>Beneficio estimado:</strong> ${queueSuggestions.estimated_benefit || 'No determinado'}
+                    </p>
+                    ${queueSuggestions.priority_suggestions && queueSuggestions.priority_suggestions.length > 0 ? 
+                        `<div>
+                            <p style="font-weight: 600; margin-bottom: 0.5rem;">Sugerencias de implementación:</p>
+                            <ul style="list-style: disc; list-style-position: inside; margin-left: 1rem;">
+                                ${queueSuggestions.priority_suggestions.map(s => `<li style="margin-bottom: 0.25rem;">${s}</li>`).join('')}
+                            </ul>
+                        </div>` : ''
+                    }
+                </div>
+            `;
+        }
+
+        function refreshMetrics() {
+            loadMetrics();
+        }
+
+        // Cargar métricas al inicio
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMetrics();
+        });
+
+        // Auto-refresh cada 30 segundos
+        setInterval(loadMetrics, 30000);
+    </script>
+</body>
+</html>
