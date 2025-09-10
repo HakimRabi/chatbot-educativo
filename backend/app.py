@@ -1,5 +1,5 @@
 # ===== IMPORTS =====
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +8,21 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
 import json
+import uuid
+from pydantic import BaseModel
+from datetime import datetime
+
+# ===== IMPORTS PARA ARQUITECTURA ASINCRÓNICA =====
+try:
+    from celery import Celery
+    from celery.result import AsyncResult
+    CELERY_AVAILABLE = True
+    logger = logging.getLogger("chatbot_app")
+    logger.info("🔧 Celery disponible - arquitectura asincrónica habilitada")
+except ImportError:
+    CELERY_AVAILABLE = False
+    logger = logging.getLogger("chatbot_app")
+    logger.warning("⚠️ Celery no disponible - usando modo sincrónico")
 import uuid
 from pydantic import BaseModel
 from datetime import datetime
@@ -39,6 +54,23 @@ logger = logging.getLogger("chatbot_app")
 
 # Crear la aplicación FastAPI
 app = FastAPI()
+
+# ===== CONFIGURACIÓN DE CELERY PARA ARQUITECTURA ASINCRÓNICA =====
+celery_app = None
+if CELERY_AVAILABLE:
+    try:
+        celery_app = Celery('chatbot_worker')
+        celery_app.config_from_object({
+            'broker_url': 'redis://localhost:6379/0',
+            'result_backend': 'redis://localhost:6379/0',
+            'task_serializer': 'json',
+            'accept_content': ['json'],
+            'result_serializer': 'json',
+        })
+        logger.info("✅ Cliente Celery configurado correctamente")
+    except Exception as e:
+        logger.error(f"❌ Error configurando Celery: {e}")
+        CELERY_AVAILABLE = False
 
 # Ruta para manejar redirecciones incorrectas de /pages/index.html
 @app.get("/pages/index.html")
@@ -1258,6 +1290,238 @@ def get_performance_recommendations(performance_data):
         recommendations.append("✅ Sistema funcionando dentro de parámetros normales")
     
     return recommendations
+
+# ===============================================
+# ENDPOINTS ASINCRÓNICOS - FASE 1
+# ===============================================
+
+# Modelos para endpoints asincrónicos
+class AsyncChatRequest(BaseModel):
+    texto: str
+    userId: str = None
+    chatToken: str = None
+    modelo: str = None
+    conversation_id: str = None
+
+class AsyncChatResponse(BaseModel):
+    task_id: str
+    status: str
+    message: str
+    estimated_time: int = None
+
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    result: dict = None
+    progress: int = None
+    error: str = None
+
+@app.post("/chat/async", response_model=AsyncChatResponse)
+async def chat_async(request: AsyncChatRequest):
+    """
+    Endpoint asincrónico para procesamiento de chat
+    Retorna task_id inmediatamente, procesamiento en segundo plano
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        # Fallback al método sincrónico si Celery no está disponible
+        return await fallback_to_sync_chat(request)
+    
+    try:
+        # Generar ID único para la conversación si no se proporciona
+        conversation_id = request.conversation_id or str(uuid.uuid4())
+        
+        # Enviar tarea a Celery worker
+        task = celery_app.send_task(
+            'celery_worker.process_chat_task',
+            args=[
+                request.texto,
+                request.modelo,
+                conversation_id
+            ],
+            kwargs={},
+            task_id=str(uuid.uuid4())
+        )
+        
+        logger.info(f"🚀 Tarea async creada: {task.id}")
+        logger.info(f"   - Input: {request.texto[:50]}...")
+        logger.info(f"   - Modelo: {request.modelo or 'default'}")
+        
+        return AsyncChatResponse(
+            task_id=task.id,
+            status="accepted",
+            message="Consulta enviada para procesamiento asincrónico",
+            estimated_time=30
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error creando tarea async: {e}")
+        # Fallback al método sincrónico
+        return await fallback_to_sync_chat(request)
+
+@app.get("/chat/status/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(task_id: str):
+    """
+    Obtener el estado de una tarea asincrónica
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="error",
+            error="Celery no disponible"
+        )
+    
+    try:
+        # Obtener resultado de Celery
+        result = AsyncResult(task_id, app=celery_app)
+        
+        if result.state == 'PENDING':
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status="pending",
+                progress=0
+            )
+        elif result.state == 'PROCESSING':
+            progress = result.info.get('progress', 50) if result.info else 50
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status="processing",
+                progress=progress,
+                result={"status": result.info.get('status', 'Procesando...')} if result.info else None
+            )
+        elif result.state == 'SUCCESS':
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status="completed",
+                progress=100,
+                result=result.result
+            )
+        elif result.state == 'FAILURE':
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status="failed",
+                progress=0,
+                error=str(result.info)
+            )
+        else:
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status=result.state.lower(),
+                progress=0
+            )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ Error obteniendo estado de tarea {task_id}: {e}")
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="error",
+            error=str(e)
+        )
+
+@app.post("/chat/switch_model_async")
+async def switch_model_async(model_name: str):
+    """
+    Cambiar modelo de forma asincrónica
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        return {"error": "Celery no disponible", "success": False}
+    
+    try:
+        task = celery_app.send_task(
+            'chatbot_worker.switch_model_task',
+            args=[model_name],
+            task_id=str(uuid.uuid4())
+        )
+        
+        logger.info(f"🔄 Cambio de modelo async iniciado: {model_name} (Tarea: {task.id})")
+        
+        return {
+            "task_id": task.id,
+            "status": "accepted",
+            "message": f"Cambio a modelo {model_name} iniciado",
+            "success": True
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error iniciando cambio de modelo: {e}")
+        return {"error": str(e), "success": False}
+
+@app.get("/health/celery")
+async def celery_health_check():
+    """
+    Health check para el sistema Celery
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        return {
+            "status": "unavailable",
+            "celery_available": False,
+            "message": "Celery no está configurado"
+        }
+    
+    try:
+        # Enviar tarea de health check
+        task = celery_app.send_task('celery_worker.health_check_task')
+        
+        # Esperar resultado por máximo 5 segundos
+        try:
+            result = task.get(timeout=5)
+            return {
+                "status": "healthy",
+                "celery_available": True,
+                "worker_status": result,
+                "message": "Sistema Celery funcionando correctamente"
+            }
+        except Exception as timeout_error:
+            return {
+                "status": "timeout",
+                "celery_available": True,
+                "message": "Worker no responde (puede estar ocupado)",
+                "error": str(timeout_error)
+            }
+            
+    except Exception as e:
+        logger.error(f"❌ Error en health check de Celery: {e}")
+        return {
+            "status": "error",
+            "celery_available": CELERY_AVAILABLE,
+            "message": "Error conectando con Celery",
+            "error": str(e)
+        }
+
+async def fallback_to_sync_chat(request: AsyncChatRequest):
+    """
+    Fallback al método sincrónico cuando Celery no está disponible
+    """
+    logger.warning("🔄 Usando fallback sincrónico para chat")
+    
+    try:
+        # Simular el comportamiento asincrónico pero ejecutar sincrónicamente
+        pregunta = Pregunta(
+            texto=request.texto,
+            userId=request.userId,
+            chatToken=request.chatToken,
+            modelo=request.modelo
+        )
+        
+        # Usar el endpoint existente
+        result = await preguntar_basic(pregunta)
+        
+        # Simular respuesta asincrónica
+        task_id = str(uuid.uuid4())
+        return AsyncChatResponse(
+            task_id=task_id,
+            status="completed_sync",
+            message="Procesado sincrónicamente (Celery no disponible)"
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error en fallback sincrónico: {e}")
+        return AsyncChatResponse(
+            task_id="error",
+            status="error",
+            message=f"Error en procesamiento: {str(e)}"
+        )
 
 # ===============================================
 # CONFIGURACIÓN Y STARTUP DEL SERVIDOR

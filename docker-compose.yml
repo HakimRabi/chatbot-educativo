@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # Redis - Message Broker para Celery
+  redis:
+    image: redis:7.2-alpine
+    container_name: chatbot_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - chatbot_network
+
+  # Flower - Celery Monitoring (Opcional)
+  flower:
+    image: mher/flower:2.0.1
+    container_name: chatbot_flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_PORT=5555
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - chatbot_network
+    profiles:
+      - monitoring
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  chatbot_network:
+    driver: bridge
+
+# Comandos útiles:
+# Iniciar solo Redis: docker-compose up redis -d
+# Iniciar con monitoreo: docker-compose --profile monitoring up -d
+# Ver logs: docker-compose logs -f redis
+# Parar todo: docker-compose down
