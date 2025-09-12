@@ -317,6 +317,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
     }
 
+    // Función para formatear mensajes (simplificada para streaming)
+    function formatMessage(text) {
+        if (!text) return '';
+        
+        // Configuración básica de marked para streaming
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            sanitize: false
+        });
+        
+        try {
+            return marked.parse(text);
+        } catch (error) {
+            console.warn('Error al formatear mensaje:', error);
+            return text.replace(/\n/g, '<br>');
+        }
+    }
+
     // Función modificada para agregar un mensaje al chat con soporte de figuras
     function addMessage(message, sender, saveToHistory = true) {
         const messageDiv = document.createElement('div');
@@ -326,10 +345,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
         
+        // Variables para manejo de contenido
+        let modelLabel = '';
+        let cleanMessage = message;
+        
         // Si es un mensaje del bot, renderizar markdown y procesar figuras
         if (sender === 'bot') {
+            // Extraer la etiqueta del modelo si está presente
+            const modelMatch = message.match(/\[Respuesta generada con ([^\]]+)\]/);
+            if (modelMatch) {
+                modelLabel = modelMatch[1];
+                cleanMessage = message.replace(/\[Respuesta generada con [^\]]+\]/g, '').trim();
+            }
+            
             // Procesar referencias de figuras ANTES del renderizado markdown
-            const { processedText, figuresFound } = processFigureReferences(message);
+            const { processedText, figuresFound } = processFigureReferences(cleanMessage);
             
             // Configurar marked para un renderizado más avanzado con soporte de código
             marked.setOptions({
@@ -682,10 +712,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         messageDiv.appendChild(contentDiv);
         
-        // Si es un mensaje del bot, añadir sistema de feedback
+        // Si es un mensaje del bot, añadir etiqueta del modelo y sistema de feedback
         if (sender === 'bot') {
-            // Guardar la respuesta para el feedback
-            lastAnswer = message;
+            // Agregar etiqueta del modelo si existe
+            if (modelLabel) {
+                const modelContainer = document.createElement('div');
+                modelContainer.style.cssText = `
+                    margin-top: 12px;
+                    overflow-wrap: break-word;
+                    hyphens: auto;
+                `;
+                
+                const modelParagraph = document.createElement('p');
+                modelParagraph.className = 'bot-paragraph';
+                modelParagraph.style.cssText = `
+                    margin-top: 12px;
+                    overflow-wrap: break-word;
+                    hyphens: auto;
+                `;
+                
+                const modelEmphasis = document.createElement('em');
+                modelEmphasis.className = 'bot-italic';
+                modelEmphasis.style.cssText = `
+                    color: rgb(85, 85, 85);
+                    font-style: italic;
+                    background-color: rgba(0, 123, 255, 0.05);
+                    padding: 1px 3px;
+                    border-radius: 3px;
+                    overflow-wrap: break-word;
+                `;
+                modelEmphasis.textContent = `[Respuesta generada con ${modelLabel}]`;
+                
+                modelParagraph.appendChild(modelEmphasis);
+                modelContainer.appendChild(modelParagraph);
+                messageDiv.appendChild(modelContainer);
+            }
+            
+            // Guardar la respuesta para el feedback (sin la etiqueta del modelo)
+            lastAnswer = cleanMessage;
             
             // Crear contenedor de feedback
             const feedbackContainer = document.createElement('div');
@@ -704,11 +768,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             for (let i = 1; i <= 5; i++) {
                 const star = document.createElement('span');
                 star.className = 'star';
-                star.innerHTML = '★';
+                star.innerHTML = '<span class="material-symbols-outlined">star</span>';
                 star.setAttribute('data-value', i);
                 
                 // Verificar si esta respuesta ya tiene rating y aplicarlo
-                const existingRating = messageRatings[message];
+                const existingRating = messageRatings[cleanMessage];
                 if (existingRating && i <= existingRating) {
                     star.classList.add('selected');
                 }
@@ -736,7 +800,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                     
                     // Guardar el rating en la variable local
-                    messageRatings[message] = rating;
+                    messageRatings[cleanMessage] = rating;
                     
                     // Mostrar campo de comentario con animación
                     const commentContainer = this.parentNode.parentNode.querySelector('.feedback-comment-container');
@@ -769,13 +833,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Contador de caracteres
             const charCounter = document.createElement('div');
             charCounter.className = 'char-counter';
-            charCounter.style.cssText = `
-                text-align: right;
-                font-size: 10px;
-                color: #6c757d;
-                margin-top: 3px;
-                font-family: monospace;
-            `;
             charCounter.textContent = '0 / 300';
             
             // Actualizar contador de caracteres
@@ -795,19 +852,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Habilitar/deshabilitar botón según contenido
                 const sendButton = this.parentNode.querySelector('.feedback-send-button');
                 if (sendButton) {
-                    const rating = messageRatings[message];
+                    const rating = messageRatings[cleanMessage];
                     sendButton.disabled = !rating || rating < 1;
                 }
             });
             
+            // Crear contenedor para la fila inferior (contador + botón)
+            const bottomRow = document.createElement('div');
+            bottomRow.className = 'feedback-bottom-row';
+            
+            // Mover el contador existente a la fila inferior (ya fue creado arriba)
+            
             // Botón para enviar el comentario
             const sendButton = document.createElement('button');
             sendButton.className = 'feedback-send-button';
-            sendButton.innerHTML = '📤 Enviar';
+            sendButton.innerHTML = '<span class="material-symbols-outlined">send</span>';
             sendButton.disabled = true; // Inicialmente deshabilitado
             
+            // Agregar elementos a la fila inferior (el charCounter se agregará después)
+            bottomRow.appendChild(charCounter);
+            bottomRow.appendChild(sendButton);
+            
             sendButton.addEventListener('click', function() {
-                const rating = messageRatings[message];
+                const rating = messageRatings[cleanMessage];
                 const comentario = commentInput.value.trim();
                 
                 if (!rating || rating < 1) {
@@ -843,51 +910,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 this.innerHTML = '⏳ Enviando...';
                 this.disabled = true;
                 
-                // Enviar feedback con comentario
+                // Mostrar mensaje de confirmación inmediatamente
+                const feedbackSent = this.parentNode.parentNode.querySelector('.feedback-sent');
+                if (feedbackSent) {
+                    feedbackSent.style.display = 'inline-block';
+                    
+                    // Desactivar estrellas y campo de comentario
+                    const stars = this.parentNode.parentNode.querySelectorAll('.star');
+                    stars.forEach(s => {
+                        s.style.pointerEvents = 'none';
+                        s.style.opacity = '0.7';
+                    });
+                    
+                    commentInput.disabled = true;
+                    commentInput.style.opacity = '0.7';
+                    charCounter.style.display = 'none';
+                    
+                    // Cambiar botón a estado de éxito
+                    this.innerHTML = '<span class="material-symbols-outlined">check</span>';
+                    this.style.background = '#22c55e';
+                    this.style.cursor = 'default';
+                }
+                
+                // Enviar feedback con comentario en segundo plano
                 sendFeedback(rating, comentario).then(() => {
-                    // Mostrar mensaje de confirmación
-                    const feedbackSent = this.parentNode.parentNode.querySelector('.feedback-sent');
-                    if (feedbackSent) {
-                        feedbackSent.style.display = 'inline-block';
-                        
-                        // Desactivar estrellas y campo de comentario
-                        const stars = this.parentNode.parentNode.querySelectorAll('.star');
-                        stars.forEach(s => {
-                            s.style.pointerEvents = 'none';
-                            s.style.opacity = '0.7';
-                        });
-                        
-                        commentInput.disabled = true;
-                        commentInput.style.opacity = '0.7';
-                        charCounter.style.display = 'none';
-                        
-                        // Cambiar botón a estado de éxito
-                        this.innerHTML = '✅ Enviado';
-                        this.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
-                        this.style.cursor = 'default';
-                        
-                        // Ocultar contenedor después de 2 segundos
-                        setTimeout(() => {
+                    console.log('Feedback enviado exitosamente');
+                    // Ocultar contenedor después de 2 segundos
+                    setTimeout(() => {
+                        if (commentContainer) {
                             commentContainer.style.opacity = '0.8';
                             commentContainer.style.transform = 'scale(0.98)';
-                        }, 2000);
-                    }
+                        }
+                    }, 2000);
                 }).catch((error) => {
-                    // Manejar error
-                    this.innerHTML = '❌ Error';
-                    this.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+                    // Si hay error, revertir el estado
+                    console.error('Error enviando feedback:', error);
+                    if (feedbackSent) {
+                        feedbackSent.style.display = 'none';
+                    }
+                    this.innerHTML = '<span class="material-symbols-outlined">error</span>';
+                    this.style.background = '#ef4444';
                     setTimeout(() => {
                         this.innerHTML = originalText;
                         this.style.background = '';
                         this.disabled = false;
+                        commentInput.disabled = false;
+                        commentInput.style.opacity = '1';
                     }, 2000);
                 });
             });
             
             // Agregar elementos al contenedor de comentario
             commentContainer.appendChild(commentInput);
-            commentContainer.appendChild(charCounter);
-            commentContainer.appendChild(sendButton);
+            commentContainer.appendChild(bottomRow);
             
             // Mensaje de confirmación (inicialmente oculto)
             const feedbackSent = document.createElement('span');
@@ -895,7 +970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             feedbackSent.textContent = '¡Gracias por tu feedback!';
             
             // Si ya hay rating, mostrar el mensaje de confirmación
-            if (messageRatings[message]) {
+            if (messageRatings[cleanMessage]) {
                 feedbackSent.style.display = 'inline-block';
                 // Desactivar estrellas
                 setTimeout(() => {
@@ -933,7 +1008,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Guardar en historial local si es necesario
         if (saveToHistory) {
             const timestamp = new Date().toISOString();
-            history.push({ sender, text: message, timestamp });
+            // Para el bot, guardar el mensaje completo con la etiqueta del modelo
+            const textToSave = sender === 'bot' ? message : message;
+            history.push({ sender, text: textToSave, timestamp });
             saveSessionHistory();
         }
     }
@@ -1158,7 +1235,207 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         try {
-            // Enviar la pregunta al bot
+            // Intentar usar streaming primero
+            const streamingSupported = await useStreamingResponse(pregunta);
+            
+            // Si streaming falla, usar el endpoint tradicional
+            if (!streamingSupported) {
+                await useTraditionalResponse(pregunta);
+            }
+        } catch (error) {
+            console.error('Error al comunicarse con el bot:', error);
+            
+            // Remover indicador de "pensando" en caso de error
+            removeThinkingIndicator();
+            
+            addMessage('Error al comunicarse con el bot. Por favor, inténtalo de nuevo.', 'bot');
+        }
+    }
+
+    // Función para manejar respuesta streaming
+    async function useStreamingResponse(pregunta) {
+        try {
+            // Remover el indicador inmediatamente cuando iniciamos el streaming
+            removeThinkingIndicator();
+            
+            const response = await fetch('http://localhost:8000/chat/stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(pregunta)
+            });
+
+            if (!response.ok) {
+                return false; // Fallback a tradicional
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let botMessageElements = null;
+            let accumulatedResponse = '';
+            let isStreaming = false;
+            let hasStarted = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        
+                        if (data === '[DONE]') {
+                            // Finalizar streaming
+                            if (accumulatedResponse) {
+                                finalizeBotMessage(accumulatedResponse);
+                            }
+                            await getSuggestions();
+                            return true;
+                        }
+
+                        try {
+                            const jsonData = JSON.parse(data);
+                            
+                            // Asegurar que el indicador esté removido
+                            if (!hasStarted) {
+                                removeThinkingIndicator();
+                                hasStarted = true;
+                            }
+                            
+                            // Manejar diferentes tipos de eventos SSE
+                            if (jsonData.status === 'completed' && jsonData.result && jsonData.result.response) {
+                                // La respuesta está completa, ahora simular streaming palabra por palabra
+                                const fullResponse = jsonData.result.response;
+                                
+                                // Crear elemento del mensaje si no existe
+                                if (!botMessageElements) {
+                                    botMessageElements = createBotMessage(true); // Mostrar loader inicialmente
+                                }
+                                
+                                // Convertir loader a mensaje normal antes del streaming
+                                convertLoaderToNormalMessage(botMessageElements);
+                                
+                                // Iniciar streaming palabra por palabra
+                                await streamTextWordByWord(botMessageElements, fullResponse);
+                                
+                                // Finalizar
+                                finalizeBotMessage(fullResponse);
+                                await getSuggestions();
+                                return true;
+                            }
+                            
+                            // Para chunks individuales (si el backend los envía)
+                            if (jsonData.chunk) {
+                                // Crear elemento del mensaje si no existe
+                                if (!botMessageElements) {
+                                    botMessageElements = createBotMessage(true); // Mostrar loader inicialmente
+                                }
+                                
+                                // Convertir loader a mensaje normal cuando empezamos a recibir contenido
+                                convertLoaderToNormalMessage(botMessageElements);
+                                
+                                // Acumular respuesta
+                                accumulatedResponse += jsonData.chunk;
+                                
+                                // Actualizar contenido en tiempo real
+                                updateBotMessage(botMessageElements, accumulatedResponse);
+                            }
+                            
+                            if (jsonData.error) {
+                                addMessage('Error: ' + jsonData.error, 'bot');
+                                return true;
+                            }
+                            
+                            // Mostrar indicadores de progreso
+                            if (jsonData.status === 'processing' && !isStreaming) {
+                                if (!botMessageElements) {
+                                    botMessageElements = createBotMessage(true); // Mostrar loader
+                                }
+                                // Solo mostrar el loader visual, sin texto
+                            }
+                            
+                        } catch (parseError) {
+                            console.log('Chunk no es JSON válido:', data);
+                        }
+                    }
+                }
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error en streaming:', error);
+            return false;
+        }
+    }
+
+    // Nueva función para simular streaming palabra por palabra
+    async function streamTextWordByWord(elements, fullText) {
+        // Limpiar el mensaje de "generando..."
+        elements.textElement.innerHTML = '';
+        
+        // Limpiar la etiqueta del modelo del texto si está presente
+        const cleanText = fullText.replace(/\[Respuesta generada con [^\]]+\]/g, '').trim();
+        
+        // Extraer texto plano para streaming (sin markdown)
+        const plainText = cleanText
+            .replace(/\*\*(.*?)\*\*/g, '$1') // Bold
+            .replace(/\*(.*?)\*/g, '$1')     // Italic
+            .replace(/`(.*?)`/g, '$1')       // Code
+            .replace(/#{1,6}\s*(.*)/g, '$1') // Headers
+            .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Links
+        
+        const words = plainText.split(' ');
+        let currentText = '';
+        
+        // Agregar clase para styling durante streaming
+        elements.messageDiv.classList.add('streaming');
+        
+        for (let i = 0; i < words.length; i++) {
+            currentText += (i > 0 ? ' ' : '') + words[i];
+            
+            // Mostrar texto plano con cursor durante streaming
+            elements.textElement.innerHTML = currentText.replace(/\n/g, '<br>') + '<span class="typing-cursor">|</span>';
+            
+            // Scroll automático
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Pausa entre palabras (ajustable para velocidad de escritura)
+            await new Promise(resolve => setTimeout(resolve, 80 + Math.random() * 40));
+        }
+        
+        // Finalizar streaming
+        elements.messageDiv.classList.remove('streaming');
+        elements.messageDiv.classList.add('complete');
+        
+        // Convertir el elemento creado por streaming a un mensaje completo con feedback
+        await convertStreamingToCompleteMessage(elements, fullText);
+        
+        // Scroll final
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Nueva función para convertir mensaje de streaming a mensaje completo
+    async function convertStreamingToCompleteMessage(elements, fullText) {
+        // Remover el mensaje de streaming
+        if (elements.messageDiv.parentNode) {
+            elements.messageDiv.parentNode.removeChild(elements.messageDiv);
+        }
+        
+        // Agregar el mensaje completo usando la función addMessage normal
+        addMessage(fullText, 'bot', true);
+    }
+
+    // Función para manejar respuesta tradicional (fallback)
+    async function useTraditionalResponse(pregunta) {
+        try {
+            // Crear mensaje con loader para respuesta tradicional
+            const botMessageElements = createBotMessage(true);
+            
             const response = await fetch('http://localhost:8000/preguntar', {
                 method: 'POST',
                 headers: {
@@ -1173,22 +1450,86 @@ document.addEventListener('DOMContentLoaded', async () => {
             removeThinkingIndicator();
             
             if (data.respuesta) {
-                // Agregar respuesta del bot
-                addMessage(data.respuesta, 'bot');
+                // Convertir loader a mensaje normal y mostrar respuesta
+                convertLoaderToNormalMessage(botMessageElements);
+                updateBotMessage(botMessageElements, data.respuesta);
                 
                 // Solicitar sugerencias después de recibir la respuesta
                 await getSuggestions();
             } else if (data.error) {
-                addMessage('Error: ' + data.error, 'bot');
+                convertLoaderToNormalMessage(botMessageElements);
+                updateBotMessage(botMessageElements, 'Error: ' + data.error);
             }
         } catch (error) {
-            console.error('Error al comunicarse con el bot:', error);
-            
-            // Remover indicador de "pensando" en caso de error
-            removeThinkingIndicator();
-            
-            addMessage('Error al comunicarse con el bot. Por favor, inténtalo de nuevo.', 'bot');
+            throw error; // Re-lanzar para manejo en sendQuestion
         }
+    }
+
+    // Función para crear elemento de mensaje del bot
+    function createBotMessage(showLoader = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot-message';
+        
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        
+        const text = document.createElement('div');
+        text.className = 'message-text';
+        
+        if (showLoader) {
+            // Mostrar solo el loader sin avatar ni texto
+            messageDiv.classList.add('loading-message');
+            text.innerHTML = '<span class="loader"></span>';
+        }
+        
+        content.appendChild(text);
+        messageDiv.appendChild(content);
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        return { 
+            textElement: text, 
+            messageDiv: messageDiv 
+        };
+    }
+
+    // Función para convertir el loader a mensaje normal
+    function convertLoaderToNormalMessage(botMessageElements) {
+        if (botMessageElements && botMessageElements.messageDiv) {
+            botMessageElements.messageDiv.classList.remove('loading-message');
+            // El contenido se actualizará con updateBotMessage
+        }
+    }
+
+    // Función para actualizar mensaje del bot en tiempo real
+    function updateBotMessage(elements, text) {
+        elements.textElement.innerHTML = formatMessage(text);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Función para finalizar mensaje del bot y agregarlo al historial
+    function finalizeBotMessage(text) {
+        // Limpiar la etiqueta del modelo del texto si está presente para el feedback
+        const cleanText = text.replace(/\[Respuesta generada con [^\]]+\]/g, '').trim();
+        
+        // Guardar la respuesta limpia para el feedback
+        lastAnswer = cleanText;
+        
+        // Agregar al historial con el texto completo (incluyendo etiqueta del modelo)
+        if (history.length === 0 || history[history.length - 1].sender !== 'bot') {
+            history.push({
+                text: text,  // Guardar texto completo con etiqueta
+                sender: 'bot',
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            // Actualizar el último mensaje del bot si ya existe
+            history[history.length - 1].text = text;  // Texto completo con etiqueta
+        }
+        
+        // Guardar historial actualizado
+        saveSessionHistory();
     }
 
     // Función para cerrar sesión
@@ -1357,19 +1698,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Función para remover indicador de "pensando"
     function removeThinkingIndicator() {
-        const thinkingIndicator = document.getElementById('thinking-indicator');
-        if (thinkingIndicator) {
-            // Añadir animación de salida
-            thinkingIndicator.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-            thinkingIndicator.style.opacity = '0';
-            thinkingIndicator.style.transform = 'translateY(-10px)';
-            
-            setTimeout(() => {
-                if (thinkingIndicator.parentNode) {
-                    thinkingIndicator.parentNode.removeChild(thinkingIndicator);
-                }
-            }, 300);
-        }
+        // Buscar y eliminar todos los indicadores existentes
+        const thinkingIndicators = document.querySelectorAll('.thinking-indicator, #thinking-indicator');
+        
+        thinkingIndicators.forEach(indicator => {
+            // Eliminar inmediatamente sin animación para evitar problemas de timing
+            if (indicator.parentNode) {
+                indicator.parentNode.removeChild(indicator);
+            }
+        });
+        
+        // También buscar por clase específica
+        const thinkingDivs = document.querySelectorAll('.message.bot.thinking-indicator');
+        thinkingDivs.forEach(div => {
+            if (div.parentNode) {
+                div.parentNode.removeChild(div);
+            }
+        });
+        
+        console.log('Indicador de pensando eliminado');
     }
 
     // Event listeners
@@ -1450,7 +1797,8 @@ function actualizarSugerencias() {
     });
 }
 
-// Añadir event listeners a los botones de sugerencia
+// Añadir event listeners a los botones de sugerencia (comentado - elementos no existen)
+/*
 document.getElementById('suggestion1').addEventListener('click', function() {
     enviarPreguntaSugerida(this.textContent);
 });
@@ -1462,6 +1810,7 @@ document.getElementById('suggestion2').addEventListener('click', function() {
 document.getElementById('suggestion3').addEventListener('click', function() {
     enviarPreguntaSugerida(this.textContent);
 });
+*/
 
 
 
@@ -1481,6 +1830,244 @@ function despuesDeLaRespuestaDelBot() {
     // Actualizar sugerencias
     actualizarSugerencias();
 }
+
+// ========================================
+// FUNCIONALIDAD DE TOGGLE DE TEMA
+// ========================================
+
+// Inicializar tema desde localStorage o usar tema claro por defecto
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('chatbot-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // Si no hay tema guardado, usar la preferencia del sistema
+    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+    
+    applyTheme(theme);
+    updateThemeIcon(theme);
+}
+
+// Aplicar tema al body
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+    } else {
+        document.body.classList.remove('dark-theme');
+    }
+}
+
+// Actualizar icono del botón según el tema
+function updateThemeIcon(theme) {
+    const themeIcon = document.querySelector('.theme-icon');
+    if (themeIcon) {
+        themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+}
+
+// Toggle entre temas
+function toggleTheme() {
+    const isDark = document.body.classList.contains('dark-theme');
+    const newTheme = isDark ? 'light' : 'dark';
+    
+    applyTheme(newTheme);
+    updateThemeIcon(newTheme);
+    
+    // Guardar preferencia en localStorage
+    localStorage.setItem('chatbot-theme', newTheme);
+    
+    console.log(`Tema cambiado a: ${newTheme}`);
+}
+
+// Event listener para el botón de toggle de tema
+document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar tema
+    initializeTheme();
+    
+    // Agregar event listener al botón de toggle
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', toggleTheme);
+        console.log('Event listener del tema agregado correctamente');
+    }
+    
+    // Escuchar cambios en la preferencia del sistema
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        // Solo cambiar automáticamente si no hay preferencia guardada
+        if (!localStorage.getItem('chatbot-theme')) {
+            const theme = e.matches ? 'dark' : 'light';
+            applyTheme(theme);
+            updateThemeIcon(theme);
+        }
+    });
+});
+
+// ========================================
+// FUNCIONALIDAD DEL DROPDOWN DE MODELOS
+// ========================================
+
+let currentSelectedModel = 'ollama3'; // Modelo por defecto
+
+// Función para manejar el dropdown de modelos
+function initializeModelSelector() {
+    const selectorBtn = document.getElementById('model-selector-btn');
+    const dropdownMenu = document.getElementById('model-dropdown-menu');
+    const modelOptions = document.querySelectorAll('.model-option');
+    
+    if (!selectorBtn || !dropdownMenu) {
+        console.log('Elementos del selector de modelo no encontrados');
+        return;
+    }
+    
+    // Toggle dropdown
+    selectorBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleModelDropdown();
+    });
+    
+    // Cerrar dropdown al hacer clic fuera
+    document.addEventListener('click', (e) => {
+        if (!selectorBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+            closeModelDropdown();
+        }
+    });
+    
+    // Marcar modelo seleccionado por defecto
+    updateSelectedModel(currentSelectedModel);
+    
+    console.log('Selector de modelo inicializado correctamente');
+}
+
+function toggleModelDropdown() {
+    const selectorBtn = document.getElementById('model-selector-btn');
+    const dropdownMenu = document.getElementById('model-dropdown-menu');
+    
+    const isOpen = !dropdownMenu.classList.contains('hidden');
+    
+    if (isOpen) {
+        closeModelDropdown();
+    } else {
+        openModelDropdown();
+    }
+}
+
+function openModelDropdown() {
+    const selectorBtn = document.getElementById('model-selector-btn');
+    const dropdownMenu = document.getElementById('model-dropdown-menu');
+    
+    dropdownMenu.classList.remove('hidden');
+    selectorBtn.classList.add('active');
+}
+
+function closeModelDropdown() {
+    const selectorBtn = document.getElementById('model-selector-btn');
+    const dropdownMenu = document.getElementById('model-dropdown-menu');
+    
+    dropdownMenu.classList.add('hidden');
+    selectorBtn.classList.remove('active');
+}
+
+function selectModel(modelValue) {
+    console.log('Modelo seleccionado:', modelValue);
+    
+    // Actualizar el modelo actual
+    currentSelectedModel = modelValue;
+    
+    // Actualizar la interfaz
+    updateSelectedModel(modelValue);
+    
+    // Actualizar el select oculto si existe (para compatibilidad)
+    const hiddenSelect = document.getElementById('model-select');
+    if (hiddenSelect) {
+        hiddenSelect.value = modelValue;
+    }
+    
+    // Cerrar el dropdown
+    closeModelDropdown();
+    
+    // Mostrar alerta de cambio de modelo
+    showModelChangeAlert(modelValue);
+    
+    // Cambiar modelo en el backend
+    changeModelInBackend(modelValue);
+    
+    console.log(`Modelo cambiado a: ${modelValue}`);
+}
+
+// Función para mostrar alerta de cambio de modelo
+function showModelChangeAlert(modelValue) {
+    const alert = document.getElementById('model-change-alert');
+    const message = document.getElementById('model-change-message');
+    
+    if (alert && message) {
+        // Obtener el nombre del modelo para mostrar
+        const selectedOption = document.querySelector(`[data-model="${modelValue}"]`);
+        const modelName = selectedOption ? selectedOption.querySelector('.model-name').textContent : modelValue;
+        
+        message.textContent = `Se cambió al modelo ${modelName}`;
+        alert.classList.add('show');
+        
+        // Ocultar después de 3 segundos
+        setTimeout(() => {
+            alert.classList.remove('show');
+        }, 3000);
+    }
+}
+
+// Función para cambiar modelo en el backend
+async function changeModelInBackend(modelValue) {
+    try {
+        const response = await fetch('http://localhost:8000/models/switch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                model: modelValue 
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Modelo cambiado en el backend:', result);
+        } else {
+            console.error('Error al cambiar modelo en el backend');
+        }
+    } catch (error) {
+        console.error('Error de conexión al cambiar modelo:', error);
+    }
+}
+
+function updateSelectedModel(modelValue) {
+    const modelOptions = document.querySelectorAll('.model-option');
+    
+    // Remover selección anterior
+    modelOptions.forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Marcar la nueva selección
+    const selectedOption = document.querySelector(`[data-model="${modelValue}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('selected');
+        
+        // Actualizar el texto del botón principal
+        const modelName = selectedOption.querySelector('.model-name').textContent;
+        const modelText = document.querySelector('.model-text');
+        if (modelText) {
+            modelText.textContent = modelName;
+        }
+    }
+}
+
+// Función para obtener el modelo actual
+function getCurrentModel() {
+    return currentSelectedModel;
+}
+
+// Inicializar el selector de modelo cuando cargue la página
+document.addEventListener('DOMContentLoaded', () => {
+    initializeModelSelector();
+});
 
 // Inicializar sugerencias al cargar la página
 document.addEventListener('DOMContentLoaded', function() {

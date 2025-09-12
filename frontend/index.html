@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatBot IA UNAB</title>
     <link rel="stylesheet" href="assets/css/index.css">
+    <!-- Cargar Material Symbols/Icons de Google con múltiples fuentes -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
     <!-- Cargar KaTeX para ecuaciones matemáticas -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx" crossorigin="anonymous"></script>
@@ -118,35 +122,6 @@
         .model-dropdown:hover {
             background: #007bff;
             color: white;
-        }
-
-        /* Estilos para la alerta de cambio de modelo */
-        .model-change-alert {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-            border-radius: 8px;
-            padding: 12px 16px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.3s ease;
-            max-width: 300px;
-            font-size: 14px;
-        }
-
-        .model-change-alert.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .model-change-alert strong {
-            display: block;
-            margin-bottom: 4px;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -336,7 +311,12 @@
             <p>Asistente ChatBot Universidad Andres Bello v0.5.1 beta-testing</p>
             <div class="user-info">
                 <span id="user-name"></span>
-                <button id="logout-button">Cerrar sesión</button>
+                <div class="header-buttons">
+                    <button id="theme-toggle" class="theme-toggle-btn" title="Cambiar tema">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button id="logout-button">Cerrar sesión</button>
+                </div>
             </div>
         </div>
         <div class="chat-messages" id="chat-messages">
@@ -348,25 +328,65 @@
             <!-- Aquí se mostrarán los botones de sugerencia -->
         </div>
 
-        <div class="chat-input">
-            <input type="text" id="user-input" placeholder="Escribe tu pregunta aquí...">
-            <button id="send-button">Enviar</button>
-        </div>
-        <div class="chat-footer">
-            <div class="session-controls">
-                <div class="left-buttons">
-                    <button id="new-session-button">Nueva conversación</button>
-                    <!-- Selector de modelo al lado de Nueva conversación -->
-                    <div class="model-selector">
-                        <select id="model-select" class="model-dropdown">
-                            <option value="ollama3" selected>Ollama3</option>
-                            <option value="gpt-oss:20b">gpt-oss:20b (razonamiento)</option>
+        <!-- Contenedor unificado para input y footer -->
+        <div class="chat-input-footer-container">
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Escribe tu pregunta aquí...">
+                <button id="send-button">Enviar</button>
+            </div>
+            <div class="chat-footer">
+                <div class="session-controls">
+                    <div class="left-buttons">
+                        <button id="new-session-button">
+                            <span class="material-symbols-outlined">add</span>
+                            Nueva conversación
+                        </button>
+                        
+                        <!-- Selector de modelo mejorado con dropdown -->
+                        <div class="model-selector-wrapper">
+                            <button id="model-selector-btn" class="model-selector-button">
+                                <span class="material-symbols-outlined">settings</span>
+                                <span class="model-text">Ollama3</span>
+                                <span class="material-symbols-outlined dropdown-arrow">expand_more</span>
+                            </button>
+                            
+                            <!-- Dropdown menu -->
+                            <div id="model-dropdown-menu" class="model-dropdown-menu hidden">
+                                <div class="dropdown-content">
+                                    <div class="model-option" data-model="ollama3" onclick="selectModel('ollama3')">
+                                        <span class="material-symbols-outlined model-icon">computer</span>
+                                        <div class="model-info">
+                                            <span class="model-name">Ollama3</span>
+                                            <span class="model-desc">Modelo local general</span>
+                                        </div>
+                                    </div>
+                                    <div class="model-option" data-model="gpt-oss:20b" onclick="selectModel('gpt-oss:20b')">
+                                        <span class="material-symbols-outlined model-icon">psychology</span>
+                                        <div class="model-info">
+                                            <span class="model-name">GPT-OSS 20B</span>
+                                            <span class="model-desc">Razonamiento avanzado</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Select oculto para compatibilidad con el backend -->
+                        <select id="model-select" style="display: none;">
+                            <option value="ollama3">Ollama3</option>
+                            <option value="gpt-oss:20b">GPT-OSS 20B</option>
                         </select>
                     </div>
-                </div>
-                <div class="right-buttons">
-                    <button id="history-button">Historial</button>
-                    <button id="dashboard-button" style="display: none;">Dashboard Admin</button>
+                    <div class="right-buttons">
+                        <button id="history-button">
+                            <span class="material-symbols-outlined" data-fallback="📜">history</span>
+                            Historial
+                        </button>
+                        <button id="dashboard-button" style="display: none;">
+                            <span class="material-symbols-outlined" data-fallback="📊">dashboard</span>
+                            Dashboard Admin
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

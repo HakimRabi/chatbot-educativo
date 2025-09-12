@@ -1,15 +1,15 @@
 {
-  "created_at": "2025-09-09T23:00:20.527588",
+  "created_at": "2025-09-11T21:45:23.183609",
   "pdf_files": [
     {
-      "path": "C:\\Users\\hakim\\OneDrive\\Documentos\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf",
+      "path": "C:\\Users\\hakim\\OneDrive\\Desktop\\backup ultima v\\chatbot-educativo\\backend\\data\\pdfs\\inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf",
       "hash": "faff8c05a4550c5fddb897c89defceb2ab53dfb9bc9d8ce8f118d51b7ee55a04",
       "size": 17111705,
       "mtime": 1756488955.4504824,
       "name": "inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf"
     },
     {
-      "path": "C:\\Users\\hakim\\OneDrive\\Documentos\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\SYLLABUS.pdf",
+      "path": "C:\\Users\\hakim\\OneDrive\\Desktop\\backup ultima v\\chatbot-educativo\\backend\\data\\pdfs\\SYLLABUS.pdf",
       "hash": "8c7a70ad3b1c3fc64cf4550f8a88e667e7818735b2b031ac202827c37b357179",
       "size": 256105,
       "mtime": 1756488955.1724815,

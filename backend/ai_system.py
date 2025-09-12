@@ -772,8 +772,7 @@ class AISystem:
                 resultado = self.cadena(query_input)
                 respuesta = resultado["result"]
                 
-                # Añadir información del modelo usado
-                respuesta += f"\n\n*[Respuesta generada con {AVAILABLE_MODELS[self.current_model]['display_name']}]*"
+                # No agregar etiqueta aquí - se agrega en el worker
                 
             elif plantilla_seleccionada:
                 # Usar plantilla específica con contexto

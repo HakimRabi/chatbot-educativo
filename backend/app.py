@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sse_starlette.sse import EventSourceResponse
 import logging
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -1345,6 +1346,8 @@ async def chat_async(request: AsyncChatRequest):
         logger.info(f"🚀 Tarea async creada: {task.id}")
         logger.info(f"   - Input: {request.texto[:50]}...")
         logger.info(f"   - Modelo: {request.modelo or 'default'}")
+        logger.info(f"   - Usuario: {conversation_id[:8]}...")
+        logger.info(f"   - 📤 Enviada a worker en: {datetime.utcnow().strftime('%H:%M:%S')}")
         
         return AsyncChatResponse(
             task_id=task.id,
@@ -1373,6 +1376,10 @@ async def get_task_status(task_id: str):
     try:
         # Obtener resultado de Celery
         result = AsyncResult(task_id, app=celery_app)
+        
+        # Log de consulta de estado
+        current_time = datetime.utcnow().strftime('%H:%M:%S')
+        logger.debug(f"📊 Status check: {task_id[:8]}... at {current_time} -> {result.state}")
         
         if result.state == 'PENDING':
             response = TaskStatusResponse(
@@ -1418,6 +1425,191 @@ async def get_task_status(task_id: str):
             status="error",
             error=str(e)
         )
+
+@app.post("/chat/stream")
+async def chat_stream(request: AsyncChatRequest):
+    """
+    Endpoint de streaming SSE para respuestas en tiempo real
+    Retorna un stream de eventos que el frontend puede consumir
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        # Fallback al método sincrónico si Celery no está disponible
+        return await fallback_to_sync_streaming(request)
+    
+    async def event_publisher():
+        try:
+            # Generar ID único para la conversación
+            conversation_id = request.conversation_id or str(uuid.uuid4())
+            
+            # Enviar evento inicial
+            yield {
+                "event": "start",
+                "data": json.dumps({
+                    "status": "started",
+                    "message": "Procesando tu consulta...",
+                    "conversation_id": conversation_id,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            }
+            
+            # Crear tarea en Celery
+            task = celery_app.send_task(
+                'celery_worker.process_chat_task',
+                args=[request.texto, request.modelo, conversation_id],
+                task_id=str(uuid.uuid4())
+            )
+            
+            logger.info(f"🌊 Streaming task creada: {task.id}")
+            
+            # Polling del estado de la tarea
+            max_wait = 120  # 2 minutos máximo
+            poll_interval = 0.5  # Polling cada 500ms
+            elapsed = 0
+            
+            while elapsed < max_wait:
+                try:
+                    result = AsyncResult(task.id, app=celery_app)
+                    
+                    if result.state == 'PENDING':
+                        yield {
+                            "event": "progress", 
+                            "data": json.dumps({
+                                "status": "pending",
+                                "message": "En cola de procesamiento...",
+                                "progress": min(10, elapsed * 2)
+                            })
+                        }
+                    elif result.state == 'PROCESSING':
+                        progress = result.info.get('progress', 50) if result.info else 50
+                        yield {
+                            "event": "progress",
+                            "data": json.dumps({
+                                "status": "processing", 
+                                "message": "Generando respuesta...",
+                                "progress": progress
+                            })
+                        }
+                    elif result.state == 'SUCCESS':
+                        # Tarea completada exitosamente
+                        yield {
+                            "event": "complete",
+                            "data": json.dumps({
+                                "status": "completed",
+                                "result": result.result,
+                                "progress": 100,
+                                "timestamp": datetime.utcnow().isoformat()
+                            })
+                        }
+                        break
+                    elif result.state == 'FAILURE':
+                        # Error en la tarea
+                        yield {
+                            "event": "error",
+                            "data": json.dumps({
+                                "status": "failed",
+                                "error": str(result.info),
+                                "timestamp": datetime.utcnow().isoformat()
+                            })
+                        }
+                        break
+                        
+                    await asyncio.sleep(poll_interval)
+                    elapsed += poll_interval
+                    
+                except Exception as poll_error:
+                    logger.error(f"❌ Error en polling: {poll_error}")
+                    yield {
+                        "event": "error",
+                        "data": json.dumps({
+                            "status": "error",
+                            "error": f"Error en seguimiento: {str(poll_error)}"
+                        })
+                    }
+                    break
+            
+            # Timeout si llegamos aquí
+            if elapsed >= max_wait:
+                yield {
+                    "event": "timeout",
+                    "data": json.dumps({
+                        "status": "timeout",
+                        "error": "La consulta tardó demasiado en procesarse",
+                        "task_id": task.id
+                    })
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ Error en streaming: {e}")
+            yield {
+                "event": "error",
+                "data": json.dumps({
+                    "status": "error",
+                    "error": str(e)
+                })
+            }
+    
+    return EventSourceResponse(event_publisher())
+
+async def fallback_to_sync_streaming(request: AsyncChatRequest):
+    """
+    Fallback para streaming cuando Celery no está disponible
+    """
+    async def sync_event_publisher():
+        try:
+            yield {
+                "event": "start",
+                "data": json.dumps({
+                    "status": "started",
+                    "message": "Procesando (modo sincrónico)...",
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            }
+            
+            # Simular progreso
+            for progress in [20, 40, 60, 80]:
+                yield {
+                    "event": "progress",
+                    "data": json.dumps({
+                        "status": "processing",
+                        "message": "Generando respuesta...",
+                        "progress": progress
+                    })
+                }
+                await asyncio.sleep(0.5)
+            
+            # Procesar usando el sistema sincrónico
+            conversation_id = request.conversation_id or str(uuid.uuid4())
+            
+            # Usar el procesamiento sincrónico existente
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    ai_system_instance.process_question,
+                    request.texto,
+                    request.modelo or "default"
+                )
+                result = future.result()
+            
+            yield {
+                "event": "complete",
+                "data": json.dumps({
+                    "status": "completed",
+                    "result": result,
+                    "progress": 100,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error en fallback streaming: {e}")
+            yield {
+                "event": "error",
+                "data": json.dumps({
+                    "status": "error",
+                    "error": str(e)
+                })
+            }
+    
+    return EventSourceResponse(sync_event_publisher())
 
 @app.post("/chat/switch_model_async")
 async def switch_model_async(model_name: str):

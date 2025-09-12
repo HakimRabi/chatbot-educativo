@@ -23,6 +23,13 @@ Asistente académico inteligente diseñado para apoyar a estudiantes del curso "
 
 ## 🚀 Características Principales
 
+### 🔄 Arquitectura Asíncrona de Alto Rendimiento ✨
+- **Sistema de colas distribuido**: Celery + Redis para procesamiento asíncrono
+- **Streaming en tiempo real**: Respuestas SSE (Server-Sent Events) palabra por palabra
+- **Escalabilidad horizontal**: Soporte para múltiples workers concurrentes
+- **Optimización GPU**: Configuración optimizada para RTX 3060 12GB
+- **Monitoreo avanzado**: Sistema de métricas y logging detallado
+
 ### 🧠 Sistema RAG Avanzado
 - **Base de conocimientos vectorial**: Utiliza ChromaDB para búsqueda semántica
 - **Procesamiento de PDFs**: Indexación automática de documentos académicos (syllabus del curso)
@@ -48,6 +55,7 @@ Asistente académico inteligente diseñado para apoyar a estudiantes del curso "
 - **Sugerencias dinámicas**: Propone preguntas de seguimiento relevantes
 - **Renderizado Markdown**: Respuestas formateadas para mejor legibilidad
 - **Sistema de templates**: Templates dinámicos para diferentes tipos de respuesta
+- **UX Streaming**: Efecto de escritura en tiempo real con cursor parpadeante
 
 ## 🏗️ Arquitectura del Sistema
 
