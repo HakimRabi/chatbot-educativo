@@ -13,13 +13,21 @@ logging.basicConfig(
 )
 
 # Configuración de Base de Datos
-DB_USER = "root"
-DB_PASSWORD = "rootchatbot"
-DB_HOST = "127.0.0.1"
-DB_PORT = 3306
-DB_NAME = "bd_chatbot"
+# Lee desde variables de entorno con valores por defecto
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "rootchatbot")
+# Usar host.docker.internal para acceder a MySQL desde contenedores Docker
+# En entorno local (no Docker), usar 127.0.0.1
+DB_HOST = os.getenv("DB_HOST", "host.docker.internal")  # Por defecto para Docker
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_NAME = os.getenv("DB_NAME", "bd_chatbot")
 
-DATABASE_URL = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# Usar mysqldb (mysqlclient) en lugar de mysqlconnector
+DATABASE_URL = f"mysql+mysqldb://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+
+# Configuración de Ollama
+# En Docker usar host.docker.internal, en local usar localhost
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
 
 # Configuración de archivos
 # Cambiar estas líneas:

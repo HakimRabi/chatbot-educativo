@@ -1,0 +1,15 @@
+# Dependencias para pruebas de carga con GPU
+# Se instalan automáticamente por los scripts de prueba
+
+# HTTP client asíncrono para pruebas de carga
+aiohttp>=3.8.0
+
+# Monitoreo de recursos del sistema
+psutil>=5.9.0
+
+# Monitoreo de GPU NVIDIA (recomendado nvidia-ml-py)
+pynvml>=11.5.0
+nvidia-ml-py>=12.535.77
+
+# Librerías estándar (ya incluidas en Python)
+# asyncio, json, statistics, threading, datetime, typing, argparse, sys, time

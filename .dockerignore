@@ -1,0 +1,68 @@
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+**/.pytest_cache
+**/.coverage
+**/htmlcov
+**/.env
+**/.venv
+**/venv/
+**/.tox/
+**/*.egg-info
+**/*.egg
+
+# Logs
+**/*.log
+**/logs/
+
+# Git
+**/.git
+**/.gitignore
+**/.gitattributes
+
+# IDE
+**/.vscode
+**/.idea
+**/*.swp
+**/*.swo
+**/*~
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+**/*.tmp
+
+# Node modules (si aplica)
+**/node_modules
+
+# Datos generados (no incluir en imagen, se montan como volúmenes)
+backend/data/chroma_db/*
+backend/data/faiss_index/*
+backend/data/cache/*
+
+# Incluir PDFs en la imagen (comentar la siguiente línea si quieres incluirlos)
+# backend/data/pdfs/*
+
+# Archivos de prueba
+test/
+tests/
+**/*_test.py
+**/*_tests.py
+**/test_*.py
+
+# Documentación
+*.md
+docs/
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Archivos temporales
+*.bak
+*.tmp
+*.swp

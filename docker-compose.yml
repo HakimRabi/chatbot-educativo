@@ -1,16 +1,16 @@
 version: '3.8'
 
 services:
-  # Redis - Message Broker para Celery
+  # Redis - Broker de mensajes para Celery
   redis:
     image: redis:7.2-alpine
     container_name: chatbot_redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -18,6 +18,122 @@ services:
       retries: 5
     networks:
       - chatbot_network
+
+  # Backend API (FastAPI)
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: chatbot_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_URL=redis://redis:6379/0
+      
+      # MySQL - Apunta a tu MySQL local en Windows
+      # host.docker.internal permite acceder al host desde el contenedor
+      - DATABASE_URL=mysql+pymysql://root:${MYSQL_PASSWORD}@host.docker.internal:3306/chatbot_db
+      - DB_HOST=host.docker.internal
+      - DB_USER=root
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - DB_PORT=3306
+      - DB_NAME=bd_chatbot
+      
+      # Ollama - Apunta a tu Ollama local en Windows
+      - OLLAMA_URL=http://host.docker.internal:11434
+      
+      # Configuración de la aplicación
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
+      
+      # Configuración adicional
+      - MAX_WORKERS=4
+      - LOG_LEVEL=info
+    volumes:
+      # Montamos data para persistir ChromaDB y FAISS
+      - ./backend/data:/app/data
+      # Los PDFs están copiados en la imagen, pero montamos por si actualizas
+      - ./backend/data/pdfs:/app/data/pdfs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - chatbot_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/check_connection"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery Worker - Procesamiento asíncrono
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    container_name: chatbot_worker
+    restart: unless-stopped
+    environment:
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_URL=redis://redis:6379/0
+      
+      # MySQL
+      - DATABASE_URL=mysql+pymysql://root:${MYSQL_PASSWORD}@host.docker.internal:3306/chatbot_db
+      - DB_HOST=host.docker.internal
+      - DB_USER=root
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - DB_PORT=3306
+      - DB_NAME=bd_chatbot
+      
+      # Ollama
+      - OLLAMA_URL=http://host.docker.internal:11434
+      
+      # Configuración de la aplicación
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-false}
+      
+      # Configuración de Celery
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_TASK_SERIALIZER=json
+      - CELERY_RESULT_SERIALIZER=json
+      - CELERY_ACCEPT_CONTENT=["json"]
+      - CELERY_TIMEZONE=America/Santiago
+      - CELERY_ENABLE_UTC=true
+    volumes:
+      # Compartimos los mismos volúmenes que el backend
+      - ./backend/data:/app/data
+      - ./backend/data/pdfs:/app/data/pdfs
+    depends_on:
+      - redis
+      - backend
+    networks:
+      - chatbot_network
+
+  # Frontend (Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chatbot_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - chatbot_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Flower - Celery Monitoring (Opcional)
   flower:
@@ -38,14 +154,21 @@ services:
 
 volumes:
   redis_data:
+    name: chatbot-educativo_redis_data
     driver: local
 
 networks:
   chatbot_network:
+    name: chatbot-educativo_network
     driver: bridge
 
 # Comandos útiles:
+# Construir imágenes: docker-compose build
+# Iniciar todo: docker-compose up -d
 # Iniciar solo Redis: docker-compose up redis -d
 # Iniciar con monitoreo: docker-compose --profile monitoring up -d
-# Ver logs: docker-compose logs -f redis
+# Ver logs: docker-compose logs -f
+# Ver logs específicos: docker-compose logs -f backend
+# Detener: docker-compose down
+# Reconstruir sin caché: docker-compose build --no-cache
 # Parar todo: docker-compose down

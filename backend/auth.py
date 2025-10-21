@@ -20,6 +20,19 @@ async def register_user(request: Request):
             logger.error(f"Campos faltantes en registro: {data}")
             return {"success": False, "message": "Todos los campos son requeridos"}
         
+        # DEBUG: Ver password antes de procesarlo
+        logger.info(f"🔍 Password ORIGINAL: len={len(password)}, bytes={len(password.encode('utf-8'))}")
+        
+        # Bcrypt tiene un límite de 72 BYTES - truncar INMEDIATAMENTE
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            logger.warning(f"⚠️ Password demasiado largo ({len(password_bytes)} bytes), truncando a 72 bytes")
+            password_bytes = password_bytes[:72]
+            password = password_bytes.decode('utf-8', errors='ignore')
+            logger.info(f"✅ Password truncado: len={len(password)}, bytes={len(password.encode('utf-8'))}")
+        else:
+            logger.info(f"✅ Password dentro del límite: {len(password_bytes)} bytes")
+        
         with SessionLocal() as db:
             existing_user = db.query(User).filter(User.email == email).first()
             if existing_user:
@@ -27,7 +40,9 @@ async def register_user(request: Request):
                 return {"success": False, "message": "El email ya está registrado"}
             
             try:
+                logger.info(f"🔐 Intentando hashear password de {len(password)} chars / {len(password.encode('utf-8'))} bytes")
                 hashed_password = pwd_context.hash(password)
+                logger.info(f"✅ Password hasheado exitosamente")
                 new_user = User(
                     nombre=nombre,
                     email=email,
@@ -68,6 +83,12 @@ async def login_user(request: Request):
         if not email or not password:
             logger.error("Email o contraseña faltantes")
             return {"success": False, "message": "Email y contraseña son requeridos"}
+        
+        # Bcrypt tiene un límite de 72 BYTES - truncar INMEDIATAMENTE
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            password = password_bytes.decode('utf-8', errors='ignore')
         
         with SessionLocal() as db:
             user = db.query(User).filter(User.email == email).first()

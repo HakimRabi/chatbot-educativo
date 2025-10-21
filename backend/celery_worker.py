@@ -35,11 +35,15 @@ logger = get_task_logger(__name__)
 # Crear la aplicación Celery
 celery_app = Celery('chatbot_worker')
 
+# Obtener URL de Redis desde variable de entorno (para Docker) o usar localhost por defecto
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_URL = f'redis://{REDIS_HOST}:6379/0'
+
 # Configuración de Celery
 celery_app.config_from_object({
     # Broker y Backend (Redis)
-    'broker_url': 'redis://localhost:6379/0',
-    'result_backend': 'redis://localhost:6379/0',
+    'broker_url': REDIS_URL,
+    'result_backend': REDIS_URL,
     
     # Serialización
     'task_serializer': 'json',
@@ -134,10 +138,13 @@ def process_chat_task(self, user_input, model_name=None, conversation_id=None):
     """
     task_id = self.request.id
     start_time = time.time()
+    current_time = datetime.utcnow().strftime('%H:%M:%S.%f')[:-3]
     
     logger.info(f"🔄 Iniciando tarea {task_id}")
+    logger.info(f"   - 🕒 Hora inicio: {current_time}")
     logger.info(f"   - Input: {user_input[:100]}...")
     logger.info(f"   - Modelo: {model_name or 'default'}")
+    logger.info(f"   - Usuario: {(conversation_id or 'N/A')[:8]}...")
     
     try:
         # Actualizar estado: PROCESANDO
@@ -191,30 +198,36 @@ def process_chat_task(self, user_input, model_name=None, conversation_id=None):
         
         result = ai_system.process_question(pregunta_obj)
         
-        # Calcular métricas
+        # Agregar etiqueta del modelo a la respuesta
+        model_used = ai_system.current_model
+        response_with_model = f"{result}\n\n[Respuesta generada con {model_used}]"
+        
         end_time = time.time()
         processing_time = end_time - start_time
+        completion_time = datetime.utcnow().strftime('%H:%M:%S.%f')[:-3]
         
         # Resultado final
         final_result = {
             'task_id': task_id,
             'status': 'completed',
-            'response': result,  # result es directamente la respuesta string
-            'model_used': ai_system.current_model,
+            'response': response_with_model,  # Ahora incluye la etiqueta del modelo
+            'model_used': model_used,
             'processing_time': round(processing_time, 2),
             'timestamp': datetime.utcnow().isoformat(),
             'conversation_id': conversation_id or task_id,
             'metadata': {
                 'input_length': len(user_input),
-                'response_length': len(result) if isinstance(result, str) else 0,
+                'response_length': len(response_with_model),
                 'vector_db_used': ai_system.using_vector_db,
                 'documents_count': len(ai_system.documentos)
             }
         }
         
         logger.info(f"✅ Tarea {task_id} completada en {processing_time:.2f}s")
-        logger.info(f"   - Modelo: {ai_system.current_model}")
-        logger.info(f"   - Respuesta: {len(result) if isinstance(result, str) else 0} chars")
+        logger.info(f"   - 🕒 Hora fin: {completion_time}")
+        logger.info(f"   - Modelo: {model_used}")
+        logger.info(f"   - Respuesta: {len(response_with_model)} chars (con etiqueta)")
+        logger.info(f"   - 📊 Performance: {len(user_input)} chars input → {len(result)} chars output (+ etiqueta)")
         
         return final_result
         

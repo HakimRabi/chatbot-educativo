@@ -60,7 +60,8 @@ class AISystem:
             
             llm_instance = OllamaLLM(
                 model=model_config["name"],
-                temperature=model_config["temperature"]
+                temperature=model_config["temperature"],
+                base_url=OLLAMA_URL  # Usar URL configurada desde environment
             )
             
             # Cachear la instancia
@@ -347,7 +348,10 @@ class AISystem:
                 return False
             
             # Configurar embeddings
-            embeddings = OllamaEmbeddings(model="nomic-embed-text")
+            embeddings = OllamaEmbeddings(
+                model="nomic-embed-text",
+                base_url=OLLAMA_URL  # Usar URL configurada desde environment
+            )
             
             # Configurar ChromaDB con persistencia optimizada
             chroma_path = os.path.join(self.data_dir, "chroma_db")
@@ -554,7 +558,10 @@ class AISystem:
             # Inicializar embeddings y LLM
             logger.info("🧠 Inicializando modelo de lenguaje...")
             try:
-                embeddings = OllamaEmbeddings(model="nomic-embed-text")
+                embeddings = OllamaEmbeddings(
+                    model="nomic-embed-text",
+                    base_url=OLLAMA_URL  # Usar URL configurada desde environment
+                )
                 self.llm = self.get_or_create_llm(DEFAULT_MODEL)
                 self.current_model = DEFAULT_MODEL
                 logger.info(f"✅ Embeddings y LLM inicializados correctamente con modelo: {DEFAULT_MODEL}")
@@ -772,8 +779,7 @@ class AISystem:
                 resultado = self.cadena(query_input)
                 respuesta = resultado["result"]
                 
-                # Añadir información del modelo usado
-                respuesta += f"\n\n*[Respuesta generada con {AVAILABLE_MODELS[self.current_model]['display_name']}]*"
+                # No agregar etiqueta aquí - se agrega en el worker
                 
             elif plantilla_seleccionada:
                 # Usar plantilla específica con contexto
