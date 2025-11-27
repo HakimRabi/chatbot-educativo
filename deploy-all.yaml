@@ -1,0 +1,161 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret
+      containers:
+      - name: redis
+        image: 913808666659.dkr.ecr.us-east-1.amazonaws.com/icfunab:redis-7.2-alpine
+        ports:
+        - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+spec:
+  selector:
+    app: redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret
+      containers:
+      - name: backend
+        image: 913808666659.dkr.ecr.us-east-1.amazonaws.com/icfunab:backend-v2.1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000 
+        env:
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: DB_USER
+          value: "chatbot"
+        - name: DB_PASSWORD
+          value: "rootchatbot"
+        - name: DB_HOST
+          value: "172.31.88.219"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_NAME
+          value: "bd_chatbot"
+        - name: OLLAMA_URL
+          value: "http://172.31.88.219:11434"
+        - name: TURNSTILE_SECRET_KEY
+          value: "TU_SECRET_KEY_AQUI"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret
+      containers:
+      - name: worker
+        image: 913808666659.dkr.ecr.us-east-1.amazonaws.com/icfunab:worker-v2.1
+        imagePullPolicy: Always
+        env:
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: DB_USER
+          value: "chatbot"
+        - name: DB_PASSWORD
+          value: "rootchatbot"
+        - name: DB_HOST
+          value: "172.31.88.219"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_NAME
+          value: "bd_chatbot"
+        - name: OLLAMA_URL
+          value: "http://172.31.88.219:11434"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret
+      containers:
+      - name: frontend
+        image: 913808666659.dkr.ecr.us-east-1.amazonaws.com/icfunab:frontend-v2.1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80 
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  type: NodePort
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30001
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: ClusterIP 
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000

@@ -1,364 +1,438 @@
-# Chatbot Educativo - UNAB IA Mentor
+# 🎓 Chatbot Educativo UNAB - IA Mentor
 
-![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg) 
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg) 
-![LangChain](https://img.shields.io/badge/LangChain-Integrado-purple.svg) 
-![Ollama](https://img.shields.io/badge/Ollama-Llama%203-orange.svg)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+<div align="center">
 
-Asistente académico inteligente diseñado para apoyar a estudiantes del curso "Fundamentos de Inteligencia Artificial" de la Universidad Andrés Bello. El sistema utiliza modelos de lenguaje locales (LLM) a través de Ollama y técnicas de Retrieval-Augmented Generation (RAG) para responder preguntas basadas en el material académico del curso.
+![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-RAG-7C3AED?style=for-the-badge&logo=chainlink&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-Llama%203-FF6B35?style=for-the-badge&logo=meta&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-## 📋 Tabla de Contenidos
-- [Características Principales](#-características-principales)
-- [Arquitectura del Sistema](#-arquitectura-del-sistema)
-- [Stack Tecnológico](#-stack-tecnológico)
-- [Instalación](#-instalación)
-- [Configuración](#-configuración)
-- [Uso](#-uso)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [API Documentation](#-api-documentation)
-- [Contribución](#-contribución)
-- [Licencia](#-licencia)
-- [Autores](#-autores)
+**Asistente académico inteligente con RAG (Retrieval-Augmented Generation) y LLM local**
 
-## 🚀 Características Principales
+[Características](#-características) •
+[Arquitectura](#-arquitectura) •
+[Instalación](#-instalación) •
+[API](#-api-endpoints) •
+[Contribuir](#-contribución)
+
+</div>
+
+---
+
+## 📖 Descripción
+
+Sistema de chatbot educativo diseñado para asistir a estudiantes universitarios mediante inteligencia artificial. Utiliza **Retrieval-Augmented Generation (RAG)** para proporcionar respuestas contextualizadas basadas en material académico, y modelos de lenguaje locales (**Ollama**) para garantizar privacidad total de los datos.
+
+### 🎯 Caso de Uso Principal
+Asistencia académica para el curso "Fundamentos de Inteligencia Artificial" (CINF103) de la Universidad Andrés Bello, Chile.
+
+---
+
+## ✨ Características
 
 ### 🧠 Sistema RAG Avanzado
-- **Base de conocimientos vectorial**: Utiliza ChromaDB para búsqueda semántica
-- **Procesamiento de PDFs**: Indexación automática de documentos académicos (syllabus del curso)
-- **Respuestas contextualizadas**: Genera respuestas basadas en el material del curso CINF103
+- **ChromaDB**: Base de datos vectorial para búsqueda semántica
+- **Embeddings locales**: Procesamiento de PDFs académicos
+- **Respuestas contextualizadas**: Basadas en el material del curso
 
 ### 🤖 IA Local y Privada
-- **Ollama Integration**: Soporte para múltiples modelos (Llama 3, Mistral, etc.)
-- **Privacidad total**: Todo el procesamiento ocurre localmente
-- **Sin dependencias de APIs externas**: Funciona completamente offline
+- **Ollama Integration**: Soporte para Llama 3, Mistral, CodeLlama
+- **Sin APIs externas**: Funciona completamente offline
+- **Privacidad total**: Datos procesados localmente
+
+### ⚡ Arquitectura de Alto Rendimiento
+- **Celery + Redis**: Procesamiento asíncrono distribuido
+- **SSE Streaming**: Respuestas en tiempo real palabra por palabra
+- **Escalabilidad horizontal**: Múltiples workers concurrentes
+- **Optimización GPU**: Configurado para RTX 3060 12GB
 
 ### 👤 Gestión de Usuarios
-- **Autenticación segura**: Sistema de registro e inicio de sesión con hash de contraseñas
-- **Historial personalizado**: Cada usuario mantiene su propio historial de conversaciones
-- **Sesiones persistentes**: Las conversaciones se guardan automáticamente en MySQL
+- **JWT Authentication**: Autenticación segura con tokens
+- **Sesiones persistentes**: Historial por usuario en MySQL
+- **Sistema de feedback**: Calificación 5 estrellas para respuestas
 
-### ⭐ Sistema de Feedback
-- **Calificación de respuestas**: Sistema de 5 estrellas para evaluar respuestas
-- **Comentarios detallados**: Los usuarios pueden dejar feedback específico
-- **Dashboard de analytics**: Panel para revisar métricas y estadísticas
+### 📊 Dashboard de Analytics
+- **Métricas en tiempo real**: Estadísticas de uso
+- **Sistema de diagnóstico**: Stress testing integrado
+- **Exportación de reportes**: Excel y JSON
 
-### 💡 Funcionalidades Inteligentes
-- **Análisis de intención**: Detecta el tipo de pregunta y adapta la respuesta
-- **Sugerencias dinámicas**: Propone preguntas de seguimiento relevantes
-- **Renderizado Markdown**: Respuestas formateadas para mejor legibilidad
-- **Sistema de templates**: Templates dinámicos para diferentes tipos de respuesta
+### 🎨 Frontend Moderno
+- **Dark/Light Mode**: Tema adaptativo
+- **Markdown Rendering**: Respuestas formateadas
+- **Responsive Design**: Optimizado para móvil y desktop
+- **Cloudflare Turnstile**: Protección anti-bot
 
-## 🏗️ Arquitectura del Sistema
+---
+
+## 🏗 Arquitectura
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│    Frontend     │    │   FastAPI       │    │     Ollama      │
-│   (HTML/JS)     │◄──►│    Backend      │◄──►│   (LLM Local)   │
-│                 │    │                 │    │                 │
-│ • Chat UI       │    │ • Auth System   │    │ • Llama 3       │
-│ • Dashboard     │    │ • RAG Pipeline  │    │ • Mistral       │
-│ • Login System  │    │ • API Endpoints │    │ • Custom Models │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                               │
-                               ▼
-                    ┌─────────────────┐    ┌─────────────────┐
-                    │     MySQL       │    │   ChromaDB      │
-                    │                 │    │                 │
-                    │ • Users         │    │ • Vector Store  │
-                    │ • Conversations │    │ • PDF Content   │
-                    │ • Feedback      │    │ • Embeddings    │
-                    │ • Sessions      │    │ • Semantic Search│
-                    └─────────────────┘    └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                          FRONTEND (Nginx)                            │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                  │
+│  │  Chat UI    │  │  Dashboard  │  │   Login     │                  │
+│  │  (SSE)      │  │  (Charts)   │  │   (JWT)     │                  │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘                  │
+└─────────┼────────────────┼────────────────┼─────────────────────────┘
+          │                │                │
+          └────────────────┼────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      BACKEND (FastAPI)                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────┐  │
+│  │  Auth API   │  │  Chat API   │  │ Dashboard   │  │ Diagnostics│  │
+│  │  (JWT)      │  │  (RAG)      │  │    API      │  │    API     │  │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └─────┬──────┘  │
+│         │                │                │               │         │
+│         ▼                ▼                ▼               ▼         │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                    AI System (RAG Pipeline)                   │   │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────────────────┐  │   │
+│  │  │  Embeddings│  │  Vector    │  │  LangChain + Ollama    │  │   │
+│  │  │  (HuggingF)│  │  Search    │  │  (Llama 3)             │  │   │
+│  │  └────────────┘  └────────────┘  └────────────────────────┘  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────┬─────────────────────┬─────────────────────┬───────────────┘
+          │                     │                     │
+          ▼                     ▼                     ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│     MySQL       │  │    ChromaDB     │  │     Redis       │
+│   (Usuarios,    │  │  (Vectores,     │  │   (Celery,      │
+│   Sesiones,     │  │   Embeddings)   │  │    Cache)       │
+│   Feedback)     │  │                 │  │                 │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
 ```
 
-## 🛠️ Stack Tecnológico
+---
 
-### Backend
-- **FastAPI**: Framework web moderno y rápido para APIs
-- **LangChain**: Orquestación de LLM y pipeline RAG
-- **SQLAlchemy**: ORM para manejo de base de datos
-- **Ollama**: Interface para modelos de lenguaje locales
-- **ChromaDB**: Base de datos vectorial para embeddings
-- **PyPDF**: Procesamiento y extracción de texto de PDFs
+## 🛠 Stack Tecnológico
 
-### Frontend
-- **HTML5/CSS3**: Estructura y estilos modernos con diseño responsivo
-- **JavaScript Vanilla**: Lógica del cliente sin frameworks externos
-- **Marked.js**: Renderizado de Markdown en tiempo real
-- **SweetAlert2**: Modales y notificaciones elegantes
+| Categoría | Tecnologías |
+|-----------|-------------|
+| **Backend** | FastAPI, LangChain, SQLAlchemy, Celery |
+| **IA/ML** | Ollama (Llama 3), ChromaDB, HuggingFace Embeddings |
+| **Base de Datos** | MySQL 8.0, Redis |
+| **Frontend** | HTML5, CSS3, JavaScript (Vanilla), Marked.js |
+| **DevOps** | Docker, Docker Compose, Nginx |
+| **Seguridad** | JWT, bcrypt, Cloudflare Turnstile |
 
-### Bases de Datos
-- **MySQL**: Almacenamiento de usuarios, conversaciones y feedback
-- **ChromaDB**: Base de datos vectorial para búsqueda semántica
-
-### Librerías Principales
-```
-fastapi
-langchain-ollama
-chromadb
-sqlalchemy
-mysql-connector-python
-pypdf
-passlib[bcrypt]
-python-dotenv
-uvicorn
-```
+---
 
 ## 📦 Instalación
 
 ### Prerrequisitos
 
-1. **Python 3.9+**
-2. **Ollama**: [Descargar e instalar](https://ollama.com/)
-3. **MySQL Server 8.0+**
-4. **Git**
+- Python 3.9+
+- MySQL 8.0+
+- Redis
+- [Ollama](https://ollama.com/) instalado
+- Docker & Docker Compose (opcional)
 
-### Pasos de Instalación
+### Opción 1: Instalación Manual
 
-1. **Clonar el repositorio**
 ```bash
-git clone https://github.com/tu-usuario/chatbot-educativo.git
+# 1. Clonar repositorio
+git clone https://github.com/HakimRabi/chatbot-educativo.git
 cd chatbot-educativo
-```
 
-2. **Crear entorno virtual**
-```bash
+# 2. Crear entorno virtual
 python -m venv venv
 # Windows
 venv\Scripts\activate
-# macOS/Linux
+# Linux/macOS
 source venv/bin/activate
-```
 
-3. **Instalar dependencias**
-```bash
+# 3. Instalar dependencias
 pip install -r requirements.txt
+
+# 4. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales
+
+# 5. Instalar modelo Ollama
+ollama pull llama3
+
+# 6. Iniciar MySQL y crear base de datos
+mysql -u root -p < init-db.sql
+
+# 7. Iniciar aplicación
+cd backend
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-4. **Instalar modelo Ollama**
+### Opción 2: Docker Compose
+
 ```bash
-ollama pull llama3
-# Modelos alternativos
-ollama pull mistral
-ollama pull codellama
+# 1. Clonar y configurar
+git clone https://github.com/HakimRabi/chatbot-educativo.git
+cd chatbot-educativo
+cp .env.example .env
+# Editar .env con tus credenciales
+
+# 2. Construir e iniciar
+docker-compose up -d --build
+
+# 3. Verificar servicios
+docker-compose ps
 ```
+
+---
 
 ## ⚙️ Configuración
 
-### 1. Variables de Entorno
+### Variables de Entorno
 
-Crear archivo `.env` en la carpeta `backend`:
+Copia `.env.example` a `.env` y configura:
 
 ```env
-# Base de Datos MySQL
-DB_USER=tu_usuario_mysql
-DB_PASSWORD=tu_password_mysql
-DB_HOST=127.0.0.1
+# Base de Datos
+DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=bd_chatbot
+DB_NAME=chatbot
+DB_USER=root
+MYSQL_PASSWORD=tu_password_seguro
 
-# Configuración del Modelo Ollama
+# Seguridad
+SECRET_KEY=tu_secret_key_unico  # Genera con: python -c "import secrets; print(secrets.token_urlsafe(64))"
+
+# Ollama
+OLLAMA_HOST=http://127.0.0.1:11434
 OLLAMA_MODEL=llama3
-OLLAMA_URL=http://localhost:11434
 
-# Configuración de la Aplicación
-SECRET_KEY=tu_clave_secreta_muy_segura_aqui
-DEBUG=True
-CACHE_TTL=3600
+# Redis/Celery
+CELERY_BROKER_URL=redis://localhost:6379/0
 ```
 
-### 2. Base de Datos MySQL
+### Documentos PDF
 
-```sql
-CREATE DATABASE bd_chatbot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+Coloca los documentos académicos en `backend/data/pdfs/`. El sistema los indexará automáticamente al iniciar.
 
-### 3. Documentos PDF
-
-Coloca el syllabus y documentos académicos en `/backend/data/pdfs/`. El sistema los indexará automáticamente.
+---
 
 ## 🚀 Uso
 
-### Método 1: Usando el script batch (Windows)
+### Acceso a la Aplicación
 
-```bash
-# Desde la raíz del proyecto
+| Servicio | URL |
+|----------|-----|
+| **Chat** | http://localhost:8000 |
+| **Login** | http://localhost:8000/pages/login.html |
+| **Dashboard** | http://localhost:8000/pages/dashboard.html |
+| **API Docs** | http://localhost:8000/docs |
+| **ReDoc** | http://localhost:8000/redoc |
+
+### Scripts de Inicio (Windows)
+
+```batch
+# Iniciar API
 startAPI.bat
+
+# Iniciar Worker Celery
+start_worker.bat
 ```
 
-### Método 2: Manual
+---
 
-```bash
-# Asegúrate de que Ollama esté ejecutándose
-ollama serve
+## 📚 API Endpoints
 
-# Navegar al backend e iniciar servidor
-cd backend
-python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000
-```
+### Autenticación
 
-### Acceder a la Aplicación
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/auth/register` | Registro de usuarios |
+| `POST` | `/auth/login` | Inicio de sesión (JWT) |
+| `POST` | `/auth/logout` | Cerrar sesión |
 
-1. **Frontend**: `http://localhost:8000` 
-2. **Login**: `http://localhost:8000/pages/login.html`
-3. **Dashboard**: `http://localhost:8000/pages/dashboard.html`
-4. **API Docs**: `http://localhost:8000/docs`
+### Chat
 
-### Funcionalidades Disponibles
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/preguntar` | Enviar pregunta (SSE streaming) |
+| `GET` | `/api/sessions` | Listar sesiones del usuario |
+| `POST` | `/api/sessions` | Crear nueva sesión |
+| `DELETE` | `/api/sessions/{id}` | Eliminar sesión |
 
-- **💬 Chat Inteligente**: Pregunta sobre contenidos del curso CINF103
-- **📚 Base de Conocimientos**: Respuestas basadas en el syllabus oficial
-- **📊 Dashboard**: Visualiza estadísticas y métricas de uso
-- **⭐ Sistema de Feedback**: Califica respuestas para mejorar el sistema
-- **🔍 Búsqueda Semántica**: Encuentra información relevante automáticamente
+### Dashboard
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/api/dashboard/stats` | Estadísticas generales |
+| `GET` | `/api/dashboard/metrics` | Métricas del sistema |
+
+### Diagnósticos
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/api/diagnostics/stress-test` | Iniciar stress test |
+| `GET` | `/api/diagnostics/status/{id}` | Estado del test |
+| `GET` | `/api/diagnostics/report/{id}` | Obtener reporte |
+
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
 chatbot-educativo/
-├── 📁 backend/
-│   ├── 🐍 app.py                    # Servidor FastAPI principal
-│   ├── 🧠 ai_system.py              # Sistema RAG y procesamiento IA
-│   ├── 🔐 auth.py                   # Sistema de autenticación
-│   ├── 💬 chat.py                   # Lógica del chat y conversaciones
-│   ├── ⚙️ config.py                 # Configuración y variables
-│   ├── 📊 dashboard.py              # Endpoints del dashboard
-│   ├── 🗃️ models.py                # Modelos de base de datos SQLAlchemy
-│   ├── 📋 templates.py              # Sistema de templates dinámicos
-│   ├── 🛠️ utils.py                  # Utilidades y funciones auxiliares
-│   └── 📁 data/
-│       ├── 📁 cache/                # Caché de respuestas
-│       ├── 📁 chroma_db/            # Base de datos vectorial ChromaDB
-│       └── 📁 pdfs/                 # Documentos fuente (Syllabus CINF103)
-├── 📁 frontend/
-│   ├── 🌐 index.html                # Página principal del chat
-│   ├── 📁 pages/
-│   │   ├── 🔐 login.html            # Página de autenticación
-│   │   └── 📊 dashboard.html        # Panel de control y estadísticas
-│   └── 📁 assets/
-│       ├── 📁 css/
-│       │   ├── 💬 index.css         # Estilos del chat
-│       │   ├── 🔐 login.css         # Estilos del login
-│       │   └── 📊 dashboard.css     # Estilos del dashboard
-│       └── 📁 js/
-│           ├── 💬 chat.js           # Lógica del chat
-│           ├── 🔐 login.js          # Lógica del login
-│           └── 📊 dashboard.js      # Lógica del dashboard
-├── 🚀 startAPI.bat                  # Script de inicio rápido (Windows)
-├── 🔧 .env                          # Variables de entorno
-├── 📋 requirements.txt              # Dependencias Python
-└── 📖 README.md                     # Este archivo
+├── backend/
+│   ├── app.py                 # FastAPI principal
+│   ├── ai_system.py           # Pipeline RAG
+│   ├── auth.py                # Autenticación JWT
+│   ├── chat.py                # Lógica de chat
+│   ├── config.py              # Configuración
+│   ├── dashboard.py           # Endpoints dashboard
+│   ├── models.py              # Modelos SQLAlchemy
+│   ├── diagnostics/           # Sistema de diagnóstico
+│   │   ├── stress_runner.py
+│   │   └── report_generator.py
+│   └── data/                  # Datos (ignorado en git)
+│       ├── pdfs/              # Documentos fuente
+│       └── chroma_db/         # Base vectorial
+├── frontend/
+│   ├── index.html             # Chat principal
+│   ├── pages/
+│   │   ├── login.html
+│   │   └── dashboard.html
+│   └── assets/
+│       ├── css/
+│       └── js/
+├── docker-compose.yml
+├── requirements.txt
+├── .env.example               # Template de configuración
+└── README.md
 ```
 
-## 📚 API Documentation
+---
 
-Documentación interactiva disponible en:
+## 🧪 Testing
 
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
+### Ejecutar Tests
 
-### Endpoints Principales
+```bash
+# Tests unitarios
+pytest tests/ -v
 
-#### Autenticación
-- `POST /auth/register` - Registro de nuevos usuarios
-- `POST /auth/login` - Inicio de sesión
-- `POST /auth/logout` - Cerrar sesión
+# Con cobertura
+pytest tests/ --cov=backend --cov-report=html
+```
 
-#### Chat y Conversaciones
-- `POST /chat/message` - Enviar mensaje al chatbot
-- `GET /chat/history/{user_id}` - Obtener historial del usuario
-- `POST /chat/new-session` - Crear nueva sesión de chat
+### Stress Testing
 
-#### Dashboard y Analytics
-- `GET /dashboard/stats/{user_id}` - Estadísticas del usuario
-- `GET /dashboard/feedback-summary` - Resumen de feedback
+El sistema incluye un módulo de diagnóstico para stress testing accesible desde el Dashboard.
 
-#### Feedback
-- `POST /feedback` - Enviar calificación y comentarios
+---
+
+## 🐳 Docker
+
+### Servicios Disponibles
+
+```yaml
+services:
+  backend:     # API FastAPI (puerto 8000)
+  frontend:    # Nginx (puerto 80)
+  mysql:       # Base de datos (puerto 3306)
+  redis:       # Cache/Broker (puerto 6379)
+  worker:      # Celery worker
+```
+
+### Comandos Útiles
+
+```bash
+# Ver logs
+docker-compose logs -f backend
+
+# Reconstruir servicio específico
+docker-compose up -d --build backend
+
+# Escalar workers
+docker-compose up -d --scale worker=3
+```
+
+---
+
+## 🔒 Seguridad
+
+### Medidas Implementadas
+
+- ✅ JWT con expiración configurable
+- ✅ Passwords hasheados con bcrypt
+- ✅ CORS configurado
+- ✅ Rate limiting
+- ✅ Cloudflare Turnstile (anti-bot)
+- ✅ Variables de entorno para secretos
+
+### ⚠️ Importante
+
+- **NUNCA** commits archivos `.env` o credenciales
+- Usa el archivo `.gitignore` incluido
+- Rota las credenciales periódicamente
+- En producción, usa HTTPS
+
+---
 
 ## 🤝 Contribución
 
-¡Las contribuciones son bienvenidas! Sigue estos pasos:
+¡Las contribuciones son bienvenidas!
 
 1. Fork el proyecto
-2. Crea una rama feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -m 'Agrega nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+2. Crea una rama (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit cambios (`git commit -m 'Agrega nueva funcionalidad'`)
+4. Push (`git push origin feature/nueva-funcionalidad`)
 5. Abre un Pull Request
 
-### Roadmap Futuro
+### Roadmap
 
-- [ ] 🔄 Sistema de caché inteligente para respuestas frecuentes
-- [ ] 📄 Soporte para documentos Word (.docx) y texto plano
-- [ ] 🌐 API REST pública con autenticación JWT
-- [ ] 🐳 Containerización con Docker
-- [ ] ☁️ Despliegue en la nube (AWS/GCP/Azure)
-- [ ] 📱 Aplicación móvil nativa
-- [ ] 🔍 Búsqueda avanzada con filtros temporales
-- [ ] 🎨 Temas personalizables para la interfaz
+- [ ] Soporte multi-idioma
+- [ ] Integración con LMS (Moodle, Canvas)
+- [ ] App móvil (React Native)
+- [ ] Voice-to-text
+- [ ] Análisis de sentimientos en feedback
+
+---
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detalles.
+Este proyecto está bajo la Licencia MIT. Ver [LICENSE](LICENSE) para más detalles.
 
 ---
 
 ## 👥 Autores
 
-### **Creado por:**
+<table>
+  <tr>
+    <td align="center">
+      <b>Luis Marcano</b><br>
+      <sub>Desarrollador</sub>
+    </td>
+    <td align="center">
+      <b>Hakim Rabi</b><br>
+      <sub>Desarrollador</sub>
+    </td>
+    <td align="center">
+      <b>Luciano Aguilar</b><br>
+      <sub>Desarrollador</sub>
+    </td>
+  </tr>
+</table>
 
-**🎓 Luis Marcano**  
-**🎓 Hakim Rabi**  
-**🎓 Luciano Aguilar**
-
----
-
-### 🏛️ **Universidad Andrés Bello - Chile**
-### 📚 **Proyecto de Título - Ingeniería Civil Informática**
-
----
-
-## 📞 Contacto y Enlaces
-
-**🔗 Proyecto**: [https://github.com/HakimRabi/chatbot-educativo](https://github.com/HakimRabi/chatbot-educativo)
-
-**🏫 Universidad**: [Universidad Andrés Bello](https://www.unab.cl/)
-
----
-
-### 💡 Sobre el Proyecto
-
-*Este chatbot educativo representa la culminación de nuestro proyecto de título en Ingeniería Civil Informática. Desarrollado específicamente para el curso CINF103 de la Universidad Andrés Bello, demuestra la implementación práctica de sistemas RAG (Retrieval-Augmented Generation) y modelos de lenguaje locales en el ámbito educativo chileno.*
-
-*El sistema procesa el syllabus oficial del curso y otros materiales académicos para proporcionar asistencia inteligente a los estudiantes, manteniendo la privacidad de los datos mediante el uso de modelos locales a través de Ollama.*
+### 🏛️ Universidad Andrés Bello - Chile
+**Proyecto de Título - Ingeniería Civil Informática (2025)**
 
 ---
 
-### ⚡ Quick Start
+## 📞 Contacto
 
-```bash
-# Instalación ultra-rápida
-git clone https://github.com/tu-usuario/chatbot-educativo.git
-cd chatbot-educativo
-
-# Setup automático
-python -m venv venv && venv\Scripts\activate
-pip install -r requirements.txt
-
-# Configurar variables de entorno (.env)
-# Configurar base de datos MySQL
-# Colocar syllabus en /backend/data/pdfs/
-
-# ¡Listo para usar!
-ollama serve
-startAPI.bat
-```
-
-**🚀 ¡Ya tienes tu asistente IA educativo funcionando!**
+- 🔗 **Repositorio**: [github.com/HakimRabi/chatbot-educativo](https://github.com/HakimRabi/chatbot-educativo)
+- 🏫 **Universidad**: [unab.cl](https://www.unab.cl/)
 
 ---
 
-*Desarrollado con ❤️ para la comunidad educativa de la Universidad Andrés Bello*
+<div align="center">
 
-**© 2025 - Proyecto de Título UNAB - Ingeniería Civil Informática**
+**Desarrollado con ❤️ para la comunidad educativa**
+
+*© 2025 - Proyecto de Título UNAB*
+
+</div>

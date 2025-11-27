@@ -1,0 +1,223 @@
+# ============================================
+# CHATBOT EDUCATIVO - GITIGNORE
+# ============================================
+# ⚠️ IMPORTANTE: Este archivo protege credenciales y datos sensibles
+# ============================================
+
+# ============================================
+# 🔐 SEGURIDAD - NUNCA SUBIR ESTOS ARCHIVOS
+# ============================================
+
+# AWS Credentials y Scripts con credenciales
+pushAWS/
+aws/
+.aws/
+credentials
+access_key*
+secret_access_key*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Variables de entorno (contienen passwords)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+*.env
+
+# Archivos de configuración con secretos
+config.local.py
+config.prod.py
+secrets.yaml
+secrets.json
+*.secrets
+
+# Tokens y claves API
+.tokens
+api_keys.txt
+*.token
+
+# ============================================
+# 📁 DATOS Y CACHE
+# ============================================
+
+# Backend data (bases vectoriales, cache, PDFs)
+backend/data/
+data/
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Cache de aplicación
+*.cache
+.cache/
+cache/
+
+# ============================================
+# 📊 LOGS Y REPORTES TEMPORALES
+# ============================================
+
+# Logs
+*.log
+logs/
+log/
+*.log.*
+
+# Reportes de diagnóstico (pueden contener datos sensibles)
+backend/diagnostics/reports/
+reports/
+*.xlsx
+*.csv
+
+# ============================================
+# 💻 IDE Y EDITORES
+# ============================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ============================================
+# 🐳 DOCKER
+# ============================================
+
+# Docker local overrides
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+
+# ============================================
+# 🧪 TESTING
+# ============================================
+
+# Coverage
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.pytest_cache/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Test outputs
+test-results/
+test-reports/
+
+# ============================================
+# 📦 DEPENDENCIAS
+# ============================================
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+.conda/
+
+# Node modules (si hubiera)
+node_modules/
+npm-debug.log
+
+# ============================================
+# 🖥️ SISTEMA OPERATIVO
+# ============================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*.directory
+
+# ============================================
+# 📄 ARCHIVOS TEMPORALES
+# ============================================
+
+# Temporales
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+tmp/
+temp/
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# ============================================
+# 🚫 KUBERNETES Y DEPLOY (con credenciales)
+# ============================================
+
+# Kubernetes secrets
+*-secret.yaml
+*-secrets.yaml
+kubeconfig
+.kube/
+
+# ============================================
+# 📝 DOCUMENTACIÓN CON DATOS SENSIBLES
+# ============================================
+
+# Mantener estos archivos localmente pero no subir
+# (pueden contener IPs o credenciales documentadas)
+MIGRACION_SERVIDOR_LOCAL.md
+
+# ============================================
+# ✅ ARCHIVOS QUE SÍ DEBEN SUBIRSE
+# ============================================
+# Los siguientes archivos NO están ignorados y DEBEN incluirse:
+# - README.md
+# - requirements.txt
+# - docker-compose.yml (sin credenciales hardcodeadas)
+# - backend/*.py (código fuente)
+# - frontend/*.html, *.css, *.js
+# - .env.example (template sin valores reales)
+# - .gitignore (este archivo)

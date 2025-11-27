@@ -5,6 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatBot IA UNAB</title>
     <link rel="stylesheet" href="assets/css/index.css">
+    <!-- Cargar Material Symbols/Icons de Google con múltiples fuentes -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+    <!-- Cargar KaTeX para ecuaciones matemáticas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    <!-- Cargar Prism.js para syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <!-- Cargar componentes de lenguajes comunes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-powershell.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
     <!-- Cargar marked.js con configuración mejorada -->
     <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
     <style>
@@ -78,6 +100,28 @@
             background-color: #007bff;
             color: white;
         }
+
+        /* --- Bloque desplegable de modelos --- */
+        .model-selector {
+            margin-left: 10px;
+            display: inline-block;
+        }
+
+        .model-dropdown {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid #007bff;
+            background: #f9fbff;
+            color: #007bff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .model-dropdown:hover {
+            background: #007bff;
+            color: white;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
@@ -87,26 +131,199 @@
         if (typeof marked !== 'undefined') {
             marked.setOptions({
                 breaks: true,
-                gfm: true,
+                gfm: true,               // GitHub Flavored Markdown (incluye tablas)
+                tables: true,            // Habilitar soporte de tablas
                 sanitize: false,
                 smartLists: true,
                 smartypants: true,
                 headerIds: false,
                 mangle: false,
                 pedantic: false,
-                silent: false
+                silent: false,
+                highlight: function(code, lang) {
+                    // Si Prism está disponible y el lenguaje es soportado
+                    if (typeof Prism !== 'undefined' && lang && Prism.languages[lang]) {
+                        try {
+                            return Prism.highlight(code, Prism.languages[lang], lang);
+                        } catch (e) {
+                            console.warn('Error highlighting code:', e);
+                            return code;
+                        }
+                    }
+                    return code;
+                }
+            });
+            
+            // Configurar un renderer personalizado para mejor manejo de código
+            const renderer = new marked.Renderer();
+            
+            // Personalizar renderizado de bloques de código
+            renderer.code = function(code, language, escaped) {
+                const lang = language || 'text';
+                const langClass = lang ? ` language-${lang}` : '';
+                const dataLang = lang ? ` data-language="${lang}"` : '';
+                
+                // Escapar HTML si no está ya escapado
+                const escapedCode = escaped ? code : escapeHtml(code);
+                
+                return `<pre class="bot-code-block${langClass}"${dataLang}><code class="${langClass}">${escapedCode}</code></pre>`;
+            };
+            
+            // Personalizar renderizado de código inline
+            renderer.codespan = function(code) {
+                return `<code class="bot-code">${escapeHtml(code)}</code>`;
+            };
+            
+            marked.setOptions({ renderer: renderer });
+        }
+        
+        // Función helper para escapar HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Función para procesar highlighting después del renderizado
+        function highlightCodeBlocks(container) {
+            if (typeof Prism !== 'undefined') {
+                // Procesar todos los bloques de código en el contenedor
+                const codeBlocks = container.querySelectorAll('pre code[class*="language-"]');
+                codeBlocks.forEach(block => {
+                    try {
+                        Prism.highlightElement(block);
+                    } catch (e) {
+                        console.warn('Error highlighting block:', e);
+                    }
+                });
+            }
+        }
+        
+        // Función para renderizar ecuaciones matemáticas con KaTeX
+        function renderMathEquations(container) {
+            if (typeof katex !== 'undefined' && typeof renderMathInElement !== 'undefined') {
+                try {
+                    renderMathInElement(container, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '\\[', right: '\\]', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false}
+                        ],
+                        throwOnError: false,
+                        errorColor: '#cc0000',
+                        strict: false,
+                        trust: false,
+                        output: 'html',
+                        fleqn: false,
+                        leqno: false,
+                        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                        ignoredClasses: ['no-katex', 'bot-code', 'bot-code-block']
+                    });
+                    
+                    // Agregar clase especial para ecuaciones inline
+                    container.querySelectorAll('.katex:not(.katex-display)').forEach(eq => {
+                        eq.classList.add('katex-inline');
+                    });
+                    
+                } catch (e) {
+                    console.warn('Error rendering math equations:', e);
+                }
+            }
+        }
+        
+        // Función para agregar funcionalidad de copiar código
+        function addCopyFunctionality(container) {
+            const codeBlocks = container.querySelectorAll('.bot-code-block, pre');
+            codeBlocks.forEach(block => {
+                // Agregar evento click para copiar
+                block.addEventListener('click', function(e) {
+                    // Solo proceder si se hace click en el área del botón copiar
+                    const rect = this.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    // Área aproximada del botón copiar (esquina superior derecha)
+                    if (clickX > rect.width - 80 && clickY < 30) {
+                        const codeElement = this.querySelector('code') || this;
+                        const textToCopy = codeElement.textContent || codeElement.innerText;
+                        
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            // Cambiar temporalmente el texto del pseudo-elemento
+                            this.style.setProperty('--copy-text', '"✓ Copiado"');
+                            setTimeout(() => {
+                                this.style.removeProperty('--copy-text');
+                            }, 2000);
+                        }).catch(err => {
+                            console.error('Error copiando código:', err);
+                        });
+                    }
+                });
+            });
+        }
+        
+        // Función para agregar funcionalidad de copiar ecuaciones
+        function addMathCopyFunctionality(container) {
+            const mathBlocks = container.querySelectorAll('.katex-display');
+            mathBlocks.forEach(block => {
+                // Agregar evento click para copiar ecuaciones
+                block.addEventListener('click', function(e) {
+                    // Solo proceder si se hace click en el área del botón copiar
+                    const rect = this.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    // Área aproximada del botón copiar (esquina superior derecha)
+                    if (clickX > rect.width - 80 && clickY < 30) {
+                        // Buscar la anotación original de LaTeX en el atributo data o texto
+                        let latexCode = this.getAttribute('data-latex') || '';
+                        
+                        // Si no hay atributo, tratar de extraer del HTML
+                        if (!latexCode) {
+                            const katexElement = this.querySelector('.katex');
+                            if (katexElement) {
+                                latexCode = katexElement.getAttribute('data-latex') || katexElement.textContent || '';
+                            }
+                        }
+                        
+                        if (latexCode) {
+                            navigator.clipboard.writeText(`$$${latexCode}$$`).then(() => {
+                                // Cambiar temporalmente el texto del pseudo-elemento
+                                this.style.setProperty('--copy-text', '"✓ Copiado"');
+                                setTimeout(() => {
+                                    this.style.removeProperty('--copy-text');
+                                }, 2000);
+                            }).catch(err => {
+                                console.error('Error copiando ecuación:', err);
+                            });
+                        }
+                    }
+                });
             });
         }
     </script>
 </head>
 <body>
+    <!-- Notification Container -->
+    <ul class="notification-container" id="notificationContainer"></ul>
+
+    <!-- Logo Superior Izquierdo -->
+    <div class="top-left-logo">
+        <span class="logo-text">Chatbot Educativo - Universidad Andres Bello</span>
+    </div>
+
     <div class="chat-container">
         <div class="chat-header">
-            <h1>UNAB-IA Mentor</h1>
-            <p>Asistente ChatBot Universidad Andres Bello v0.4.6 beta-testing</p>
+            <h1>Chatbot Educativo</h1>
+            <p>Creado por Estudiantes de la Universidad Andres Bello - v2.1</p>
             <div class="user-info">
                 <span id="user-name"></span>
-                <button id="logout-button">Cerrar sesión</button>
+                <div class="header-buttons">
+                    <button id="theme-toggle" class="theme-toggle-btn" title="Cambiar tema">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button id="logout-button">Cerrar sesión</button>
+                </div>
             </div>
         </div>
         <div class="chat-messages" id="chat-messages">
@@ -118,18 +335,75 @@
             <!-- Aquí se mostrarán los botones de sugerencia -->
         </div>
 
-        <div class="chat-input">
-            <input type="text" id="user-input" placeholder="Escribe tu pregunta aquí...">
-            <button id="send-button">Enviar</button>
-        </div>
-        <div class="chat-footer">
-            <div class="session-controls">
-                <div class="left-buttons">
-                    <button id="new-session-button">Nueva conversación</button>
-                </div>
-                <div class="right-buttons">
-                    <button id="history-button">Historial</button>
-                    <button id="dashboard-button" style="display: none;">Dashboard Admin</button>
+        <!-- Contenedor unificado para input y footer -->
+        <div class="chat-input-footer-container">
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Escribe tu pregunta aquí...">
+                <button id="send-button">
+                    <span class="button-text">Enviar</span>
+                    <div class="button-loader">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                            <path d="M10,20 C10,17.24 11.12,14.74 12.93,12.93 L12.93,12.93 C14.74,11.12 17.24,10 20,10 L80,10 C82.76,10 85.26,11.12 87.07,12.93 L87.07,12.93 C88.88,14.74 90,17.24 90,20 L90,80 C90,82.76 88.88,85.26 87.07,87.07 L87.07,87.07 C85.26,88.88 82.76,90 80,90 L20,90 C17.24,90 14.74,88.88 12.93,87.07 L12.93,87.07 C11.12,85.26 10,82.76 10,80Z M68,50 C68,45.02 65.98,40.52 62.72,37.27 L62.72,37.27 C59.47,34.01 54.97,32 50,32 L50,32 C45.02,32 40.52,34.01 37.27,37.27 L37.27,37.27 C34.01,40.52 32,45.02 32,50 L32,50 C32,54.97 34.01,59.47 37.27,62.72 L37.27,62.72 C40.52,65.98 45.02,68 50,68 L50,68 C54.97,68 59.47,65.98 62.72,62.72 L62.72,62.72 C65.98,59.47 68,54.97 68,50Z"></path>
+                            <path d="M10,20 C10,17.24 11.12,14.74 12.93,12.93 L12.93,12.93 C14.74,11.12 17.24,10 20,10 L80,10 C82.76,10 85.26,11.12 87.07,12.93 L87.07,12.93 C88.88,14.74 90,17.24 90,20 L90,80 C90,82.76 88.88,85.26 87.07,87.07 L87.07,87.07 C85.26,88.88 82.76,90 80,90 L20,90 C17.24,90 14.74,88.88 12.93,87.07 L12.93,87.07 C11.12,85.26 10,82.76 10,80Z"></path>
+                            <path d="M10,37.57 C10,34.92 11.05,32.37 12.92,30.5 L30.5,12.92 C32.37,11.05 34.92,10 37.57,10 L62.42,10 C65.07,10 67.62,11.05 69.49,12.92 L87.07,30.5 C88.94,32.37 90,34.92 90,37.57 L90,62.42 C90,65.07 88.94,67.62 87.07,69.49 L69.49,87.07 C67.62,88.94 65.07,90 62.42,90 L37.57,90 C34.92,90 32.37,88.94 30.5,87.07 L12.92,69.49 C11.05,67.62 10,65.07 10,62.42Z"></path>
+                            <path d="M10,50 C10,38.95 14.48,28.95 21.72,21.72 L21.72,21.72 C28.95,14.48 38.95,10 50,10 L50,10 C61.05,10 71.05,14.48 78.28,21.72 L78.28,21.72 C85.52,28.95 90,38.95 90,50 L90,50 C90,61.05 85.52,71.05 78.28,78.28 L78.28,78.28 C71.05,85.52 61.05,90 50,90 L50,90 C38.95,90 28.95,85.52 21.72,78.28 L21.72,78.28 C14.48,71.05 10,61.05 10,50Z"></path>
+                        </svg>
+                    </div>
+                </button>
+            </div>
+            <div class="chat-footer">
+                <div class="session-controls">
+                    <div class="left-buttons">
+                        <button id="new-session-button">
+                            <span class="material-symbols-outlined">add</span>
+                            Nueva conversación
+                        </button>
+                        
+                        <!-- Selector de modelo mejorado con dropdown -->
+                        <div class="model-selector-wrapper">
+                            <button id="model-selector-btn" class="model-selector-button">
+                                <span class="material-symbols-outlined">settings</span>
+                                <span class="model-text">Llama 3</span>
+                                <span class="material-symbols-outlined dropdown-arrow">expand_more</span>
+                            </button>
+                            
+                            <!-- Dropdown menu -->
+                            <div id="model-dropdown-menu" class="model-dropdown-menu hidden">
+                                <div class="dropdown-content">
+                                    <div class="model-option" data-model="llama3" onclick="selectModel('llama3')">
+                                        <span class="material-symbols-outlined model-icon">flash_on</span>
+                                        <div class="model-info">
+                                            <span class="model-name">Llama 3</span>
+                                            <span class="model-desc">Modelo rápido y general</span>
+                                        </div>
+                                    </div>
+                                    <div class="model-option" data-model="phi4" onclick="selectModel('phi4')">
+                                        <span class="material-symbols-outlined model-icon">psychology</span>
+                                        <div class="model-info">
+                                            <span class="model-name">Phi 4</span>
+                                            <span class="model-desc">Razonamiento avanzado</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Select oculto para compatibilidad con el backend -->
+                        <select id="model-select" style="display: none;">
+                            <option value="llama3">Llama 3</option>
+                            <option value="phi4">Phi 4</option>
+                        </select>
+                    </div>
+                    <div class="right-buttons">
+                        <button id="history-button">
+                            <span class="material-symbols-outlined" data-fallback="📜">history</span>
+                            Historial
+                        </button>
+                        <button id="dashboard-button" style="display: none;">
+                            <span class="material-symbols-outlined" data-fallback="📊">dashboard</span>
+                            Dashboard Admin
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -143,10 +417,114 @@
             <div id="sessions-list">
                 <!-- Aquí se listarán las sesiones previas -->
             </div>
+            <div class="pagination-container">
+                <button class="pagination-button" id="prev-page" disabled>
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <span class="pagination-info" id="pagination-info">Página 1</span>
+                <button class="pagination-button" id="next-page">
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
         </div>
     </div>
 
+    <!-- Alerta de cambio de modelo -->
+    <div id="model-change-alert" class="model-change-alert">
+        <strong>Modelo cambiado</strong>
+        <span id="model-change-message"></span>
+    </div>
+
     <!-- Scripts -->
+    <script src="assets/js/notifications.js"></script>
     <script src="assets/js/chat.js"></script>
+    <script>
+        // Capturar el modelo seleccionado
+        const modelSelect = document.getElementById("model-select");
+        let currentModel = modelSelect.value;
+
+        // Función para cargar modelos disponibles
+        async function loadAvailableModels() {
+            try {
+                const response = await fetch('/models/available');
+                const data = await response.json();
+                
+                if (data.models) {
+                    // Limpiar opciones actuales
+                    modelSelect.innerHTML = '';
+                    
+                    // Añadir opciones desde el backend
+                    for (const [key, model] of Object.entries(data.models)) {
+                        const option = document.createElement('option');
+                        option.value = key;
+                        option.textContent = `${model.display_name} - ${model.description}`;
+                        
+                        // Marcar como seleccionado el modelo actual
+                        if (key === data.current_model) {
+                            option.selected = true;
+                            currentModel = key;
+                        }
+                        
+                        modelSelect.appendChild(option);
+                    }
+                    
+                    console.log(`Modelos cargados. Modelo actual: ${data.current_model}`);
+                }
+            } catch (error) {
+                console.error('Error cargando modelos:', error);
+                // Mantener opciones por defecto si hay error
+            }
+        }
+
+        // Cargar modelos al iniciar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAvailableModels();
+        });
+
+        // Función para mostrar alerta de cambio de modelo
+        function showModelChangeAlert(modelName) {
+            const alert = document.getElementById('model-change-alert');
+            const message = document.getElementById('model-change-message');
+            
+            message.textContent = `Se cambió al modelo ${modelName}`;
+            alert.classList.add('show');
+            
+            // Ocultar después de 3 segundos
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 3000);
+        }
+
+        modelSelect.addEventListener("change", async () => {
+            currentModel = modelSelect.value;
+            console.log("Modelo seleccionado:", currentModel);
+            
+            try {
+                // Cambiar modelo en el backend
+                const response = await fetch('/models/switch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ model: currentModel })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Mostrar alerta de éxito discreta
+                    const selectedOption = modelSelect.options[modelSelect.selectedIndex];
+                    const modelDisplayName = selectedOption.textContent;
+                    showModelChangeAlert(modelDisplayName);
+                } else {
+                    console.error('Error cambiando modelo:', data.error);
+                    // Solo mostrar error en consola, sin alertas molestas
+                }
+            } catch (error) {
+                console.error('Error en cambio de modelo:', error);
+                // Solo mostrar error en consola, sin alertas molestas
+            }
+        });
+    </script>
 </body>
 </html>

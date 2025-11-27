@@ -1,35 +1,21 @@
 {
-  "created_at": "2025-06-26T14:11:40.834139",
+  "created_at": "2025-11-17T22:01:37.132292",
   "pdf_files": [
     {
-      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\06_Clustering.pdf",
-      "hash": "dad45ab793726074a3d1e0647115b4150f124442a8cea9bc4b2d2cea49e1080b",
-      "size": 2508857,
-      "mtime": 1747944613.7116385,
-      "name": "06_Clustering.pdf"
-    },
-    {
-      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\d2l-en-mxnet.pdf",
-      "hash": "4175422c67bf52031c9f0cb0e964a28f4495c087080c80321470fa9c77238952",
-      "size": 43412766,
-      "mtime": 1750960464.2813575,
-      "name": "d2l-en-mxnet.pdf"
-    },
-    {
-      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf",
+      "path": "C:\\Users\\hakim\\OneDrive\\Desktop\\backup ultima v\\chatbot-educativo\\backend\\data\\pdfs\\inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf",
       "hash": "faff8c05a4550c5fddb897c89defceb2ab53dfb9bc9d8ce8f118d51b7ee55a04",
       "size": 17111705,
-      "mtime": 1750957003.8882065,
+      "mtime": 1756488955.4504824,
       "name": "inteligencia-artificial-un-enfoque-moderno-stuart-j-russell.pdf"
     },
     {
-      "path": "C:\\Users\\luisa\\OneDrive\\Documents\\GitHub\\chatbot-educativo\\backend\\data\\pdfs\\SYLLABUS.pdf",
+      "path": "C:\\Users\\hakim\\OneDrive\\Desktop\\backup ultima v\\chatbot-educativo\\backend\\data\\pdfs\\SYLLABUS.pdf",
       "hash": "8c7a70ad3b1c3fc64cf4550f8a88e667e7818735b2b031ac202827c37b357179",
       "size": 256105,
-      "mtime": 1749263230.1913443,
+      "mtime": 1756488955.1724815,
       "name": "SYLLABUS.pdf"
     }
   ],
-  "total_fragments": 3025,
+  "total_fragments": 4705,
   "cache_version": "1.0"
 }

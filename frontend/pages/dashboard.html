@@ -16,9 +16,9 @@
             <div class="sidebar-header">
                 <div class="logo">
                     <i class="fas fa-robot"></i>
-                    <h2>IA UNAB</h2>
+                    <h2>DASHBOARD</h2>
                 </div>
-                <h6>v0.4.6</h6>
+            <h6>CHATBOT EDUCATIVO - V2.1</h6>
             </div>
             
             <div class="sidebar-menu">
@@ -34,9 +34,21 @@
                     <i class="fas fa-users"></i>
                     <span>Usuarios</span>
                 </a>
+                <a href="#sessions" class="menu-item" data-section="sessions">
+                    <i class="fas fa-tasks"></i>
+                    <span>Sesiones</span>
+                </a>
+                <a href="#resources" class="menu-item" data-section="resources">
+                    <i class="fas fa-microchip"></i>
+                    <span>Monitor de Recursos</span>
+                </a>
                 <a href="#system" class="menu-item" data-section="system">
                     <i class="fas fa-server"></i>
                     <span>Sistema</span>
+                </a>
+                <a href="#diagnostics" class="menu-item" data-section="diagnostics">
+                    <i class="fas fa-flask"></i>
+                    <span>Diagnosticos</span>
                 </a>
             </div>
             
@@ -107,6 +119,19 @@
                         </div>
                     </div>
 
+                    <div class="stat-card clickable" onclick="dashboard.showSection('sessions')">
+                        <div class="stat-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="activeSessions">--</h3>
+                            <p>Sesiones Activas</p>
+                        </div>
+                        <div class="stat-trend">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+
                     <div class="stat-card">
                         <div class="stat-icon">
                             <i class="fas fa-star"></i>
@@ -119,21 +144,19 @@
                             <i class="fas fa-arrow-up"></i>
                         </div>
                     </div>
-
-                    <div class="stat-card">
-                        <div class="stat-icon system-status" id="systemStatusIcon">
-                            <i class="fas fa-circle"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="systemStatus">--</h3>
-                            <p>Estado del Sistema</p>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="charts-grid">
                     <div class="chart-card">
-                        <h3>Sesiones Diarias</h3>
+                        <div class="chart-header">
+                            <h3>Sesiones Diarias</h3>
+                            <div class="date-range-selector">
+                                <input type="date" id="startDate" class="date-input">
+                                <span>-</span>
+                                <input type="date" id="endDate" class="date-input">
+                                <button id="applyDateRange" class="btn-apply-date"><i class="fas fa-check"></i></button>
+                            </div>
+                        </div>
                         <div class="chart-container">
                             <canvas id="sessionsChart"></canvas>
                         </div>
@@ -288,6 +311,216 @@
                 </div>
             </section>
 
+            <!-- Sessions Monitor Section -->
+            <section id="sessions-section" class="content-section">
+                <!-- Estadísticas de sesiones activas -->
+                <div class="stats-grid" style="margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #17a2b8, #54d8e8);">
+                            <i class="fas fa-play-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="tasksProcessing">--</h3>
+                            <p>En Procesamiento</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #ffc107, #ff9800);">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="tasksPending">--</h3>
+                            <p>En Cola</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="tasksCompleted">--</h3>
+                            <p>Completadas (24h)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #dc3545, #c82333);">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="tasksFailed">--</h3>
+                            <p>Fallidas (24h)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controles de búsqueda y filtros -->
+                <div class="section-controls">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="sessionsSearch" placeholder="Buscar por Task ID, Usuario, Consulta...">
+                    </div>
+                    <select id="statusFilterSessions">
+                        <option value="">Todos los estados</option>
+                        <option value="processing">En Procesamiento</option>
+                        <option value="pending">En Cola</option>
+                        <option value="completed">Completadas</option>
+                        <option value="failed">Fallidas</option>
+                    </select>
+                    <select id="modelFilterSessions">
+                        <option value="">Todos los modelos</option>
+                        <option value="llama3">Llama3</option>
+                        <option value="phi4">Phi4</option>
+                    </select>
+                    <button id="autoRefreshToggle" class="btn-refresh" title="Auto-refresh cada 5s">
+                        <i class="fas fa-sync-alt"></i> Auto-refresh: OFF
+                    </button>
+                </div>
+
+                <!-- Tabla de sesiones -->
+                <div class="feedback-table-container">
+                    <table class="feedback-table sessions-table">
+                        <thead>
+                            <tr>
+                                <th>Task ID</th>
+                                <th>Usuario</th>
+                                <th>Consulta</th>
+                                <th>Modelo</th>
+                                <th>Estado</th>
+                                <th>Tiempo</th>
+                                <th>Worker</th>
+                                <th>Docs RAG</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsTableBody">
+                            <tr>
+                                <td colspan="10" class="loading">Cargando sesiones activas...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Controles de paginación para sesiones -->
+                    <div class="pagination-controls">
+                        <div class="pagination-info" id="sessionsPaginationInfo">Mostrando 0 - 0 de 0 sesiones</div>
+                        <div class="pagination-buttons">
+                            <button id="sessionsPrevPage" class="pagination-btn" disabled>
+                                <i class="fas fa-chevron-left"></i> Anterior
+                            </button>
+                            <button id="sessionsNextPage" class="pagination-btn" disabled>
+                                Siguiente <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Resources Monitor Section -->
+            <section id="resources-section" class="content-section">
+                <div class="resources-grid">
+                    <!-- Especificaciones de la Máquina -->
+                    <div class="spec-card">
+                        <h3><i class="fas fa-info-circle"></i> Especificaciones del Sistema</h3>
+                        <div id="systemSpecs" class="specs-content">
+                            <div class="loading">Cargando...</div>
+                        </div>
+                    </div>
+
+                    <!-- Métricas en Tiempo Real -->
+                    <div class="metrics-grid">
+                        <!-- CPU -->
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <i class="fas fa-microchip"></i>
+                                <h4>CPU</h4>
+                            </div>
+                            <div class="metric-value" id="cpuUsage">--</div>
+                            <div class="metric-label">Uso del Procesador</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="cpuProgress"></div>
+                            </div>
+                            <div class="metric-details" id="cpuDetails">--</div>
+                        </div>
+
+                        <!-- GPU -->
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <i class="fas fa-server"></i>
+                                <h4>GPU</h4>
+                            </div>
+                            <div class="metric-value" id="gpuUsage">--</div>
+                            <div class="metric-label">Uso de GPU</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="gpuProgress"></div>
+                            </div>
+                            <div class="metric-details" id="gpuDetails">--</div>
+                        </div>
+
+                        <!-- RAM -->
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <i class="fas fa-memory"></i>
+                                <h4>Memoria RAM</h4>
+                            </div>
+                            <div class="metric-value" id="ramUsage">--</div>
+                            <div class="metric-label">Memoria Utilizada</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="ramProgress"></div>
+                            </div>
+                            <div class="metric-details" id="ramDetails">--</div>
+                        </div>
+
+                        <!-- Disco -->
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <i class="fas fa-hdd"></i>
+                                <h4>Disco</h4>
+                            </div>
+                            <div class="metric-value" id="diskUsage">--</div>
+                            <div class="metric-label">Espacio Utilizado</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="diskProgress"></div>
+                            </div>
+                            <div class="metric-details" id="diskDetails">--</div>
+                        </div>
+
+                        <!-- Temperatura -->
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <i class="fas fa-thermometer-half"></i>
+                                <h4>Temperatura</h4>
+                            </div>
+                            <div class="metric-value" id="tempValue">--</div>
+                            <div class="metric-label">CPU/GPU</div>
+                            <div class="temp-gauge" id="tempGauge">
+                                <div class="temp-indicator" id="tempIndicator"></div>
+                            </div>
+                            <div class="metric-details" id="tempDetails">--</div>
+                        </div>
+
+                        <!-- Network -->
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <i class="fas fa-network-wired"></i>
+                                <h4>Red</h4>
+                            </div>
+                            <div class="metric-value" id="networkValue">--</div>
+                            <div class="metric-label">Tráfico de Red</div>
+                            <div class="network-stats" id="networkStats">
+                                <div class="network-item">
+                                    <span>↓ Recibido:</span>
+                                    <span id="netReceived">--</span>
+                                </div>
+                                <div class="network-item">
+                                    <span>↑ Enviado:</span>
+                                    <span id="netSent">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- System Section -->
             <section id="system-section" class="content-section">
                 <div class="system-grid">
@@ -302,8 +535,22 @@
                                 </div>
                             </div>
                             <div class="health-item">
-                                <span class="health-label">Modelo Ollama</span>
-                                <div class="health-status" id="ollamaHealth">
+                                <span class="health-label">Modelos (Llama3/Phi4)</span>
+                                <div class="health-status" id="phi4Health">
+                                    <i class="fas fa-circle"></i>
+                                    <span>Verificando...</span>
+                                </div>
+                            </div>
+                            <div class="health-item">
+                                <span class="health-label">Sistema de IA</span>
+                                <div class="health-status" id="aiHealth">
+                                    <i class="fas fa-circle"></i>
+                                    <span>Verificando...</span>
+                                </div>
+                            </div>
+                            <div class="health-item">
+                                <span class="health-label">Workers Celery</span>
+                                <div class="health-status" id="workersHealth">
                                     <i class="fas fa-circle"></i>
                                     <span>Verificando...</span>
                                 </div>
@@ -370,6 +617,237 @@
                 </div>
             </section>
 
+            <!-- Diagnostics Section -->
+            <section id="diagnostics-section" class="content-section">
+                <div class="diagnostics-container">
+                    <!-- Configuracion del Test -->
+                    <div class="diagnostics-config-card">
+                        <h3><i class="fas fa-cog"></i> Configurar Laboratorio de Estres</h3>
+                        
+                        <div class="config-grid">
+                            <div class="config-group">
+                                <label for="testName">Nombre del Test</label>
+                                <input type="text" id="testName" placeholder="Ej: Test 10 usuarios - Phi4 RAG" value="">
+                            </div>
+                            
+                            <div class="config-group">
+                                <label for="testType">Tipo de Test</label>
+                                <select id="testType">
+                                    <option value="concurrent_users">Usuarios Concurrentes</option>
+                                    <option value="sustained_load">Carga Sostenida</option>
+                                    <option value="spike_test">Test de Picos</option>
+                                    <option value="endurance">Test de Resistencia</option>
+                                </select>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label>Usuarios Simulados</label>
+                                <div class="users-selector">
+                                    <button class="user-btn" data-users="1">1</button>
+                                    <button class="user-btn" data-users="5">5</button>
+                                    <button class="user-btn active" data-users="10">10</button>
+                                    <button class="user-btn" data-users="20">20</button>
+                                    <button class="user-btn" data-users="30">30</button>
+                                    <input type="number" id="customUsers" placeholder="Custom" min="1" max="100">
+                                </div>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label for="queriesPerUser">Queries por Usuario</label>
+                                <select id="queriesPerUser">
+                                    <option value="1">1</option>
+                                    <option value="3">3</option>
+                                    <option value="5" selected>5</option>
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                </select>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label for="maxDuration">Duracion Maxima</label>
+                                <select id="maxDuration">
+                                    <option value="30">30 segundos</option>
+                                    <option value="60">1 minuto</option>
+                                    <option value="120" selected>2 minutos</option>
+                                    <option value="300">5 minutos</option>
+                                    <option value="600">10 minutos</option>
+                                </select>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label for="rampUp">Ramp-up (escalado gradual)</label>
+                                <select id="rampUp">
+                                    <option value="0" selected>Sin ramp-up</option>
+                                    <option value="5">5 segundos</option>
+                                    <option value="10">10 segundos</option>
+                                    <option value="30">30 segundos</option>
+                                </select>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label for="snapshotInterval">Intervalo de Metricas</label>
+                                <select id="snapshotInterval">
+                                    <option value="1">1 segundo</option>
+                                    <option value="2">2 segundos</option>
+                                    <option value="5" selected>5 segundos</option>
+                                    <option value="10">10 segundos</option>
+                                </select>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label>Complejidad de Queries</label>
+                                <div class="complexity-selector">
+                                    <label class="radio-label">
+                                        <input type="radio" name="complexity" value="simple"> Simple
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="complexity" value="medium" checked> Media
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="complexity" value="complex"> Compleja
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="complexity" value="mixed"> Mixta
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label>Modelo Target</label>
+                                <div class="model-selector">
+                                    <label class="radio-label">
+                                        <input type="radio" name="model" value="llama3"> Llama3
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="model" value="phi4" checked> Phi4
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="useRag" checked>
+                                    Usar RAG (VectorStore)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="config-actions">
+                            <button id="startStressTest" class="btn-primary">
+                                <i class="fas fa-play"></i> Iniciar Test de Estres
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Hardware Info -->
+                    <div class="diagnostics-hardware-card">
+                        <h3><i class="fas fa-microchip"></i> Hardware Detectado</h3>
+                        <div id="diagnosticsHardware" class="hardware-grid">
+                            <div class="hardware-item">
+                                <span class="hw-label">CPU:</span>
+                                <span class="hw-value" id="hwCpu">Cargando...</span>
+                            </div>
+                            <div class="hardware-item">
+                                <span class="hw-label">Cores:</span>
+                                <span class="hw-value" id="hwCores">--</span>
+                            </div>
+                            <div class="hardware-item">
+                                <span class="hw-label">GPU:</span>
+                                <span class="hw-value" id="hwGpu">Cargando...</span>
+                            </div>
+                            <div class="hardware-item">
+                                <span class="hw-label">VRAM:</span>
+                                <span class="hw-value" id="hwVram">--</span>
+                            </div>
+                            <div class="hardware-item">
+                                <span class="hw-label">RAM:</span>
+                                <span class="hw-value" id="hwRam">--</span>
+                            </div>
+                            <div class="hardware-item">
+                                <span class="hw-label">OS:</span>
+                                <span class="hw-value" id="hwOs">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Test en Ejecucion -->
+                    <div id="runningTestContainer" class="diagnostics-running-card" style="display: none;">
+                        <h3><i class="fas fa-spinner fa-spin"></i> Test en Ejecucion: <span id="runningTestName">--</span></h3>
+                        
+                        <div class="running-metrics-grid">
+                            <div class="running-metric">
+                                <span class="metric-label">CPU</span>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="runningCpu" style="width: 0%"></div>
+                                </div>
+                                <span class="metric-value" id="runningCpuValue">0%</span>
+                            </div>
+                            <div class="running-metric">
+                                <span class="metric-label">RAM</span>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="runningRam" style="width: 0%"></div>
+                                </div>
+                                <span class="metric-value" id="runningRamValue">0%</span>
+                            </div>
+                            <div class="running-metric">
+                                <span class="metric-label">GPU</span>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="runningGpu" style="width: 0%"></div>
+                                </div>
+                                <span class="metric-value" id="runningGpuValue">0%</span>
+                            </div>
+                            <div class="running-metric">
+                                <span class="metric-label">Temp</span>
+                                <div class="progress-bar temp-bar">
+                                    <div class="progress-fill" id="runningTemp" style="width: 0%"></div>
+                                </div>
+                                <span class="metric-value" id="runningTempValue">0C</span>
+                            </div>
+                        </div>
+                        
+                        <div class="running-log-container">
+                            <h4>Log en Tiempo Real</h4>
+                            <div id="runningLog" class="running-log"></div>
+                        </div>
+                        
+                        <div class="running-actions">
+                            <button id="stopStressTest" class="btn-danger">
+                                <i class="fas fa-stop"></i> Detener Test
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Historial de Tests -->
+                    <div class="diagnostics-history-card">
+                        <h3><i class="fas fa-history"></i> Historial de Tests</h3>
+                        
+                        <div class="diagnostics-table-container">
+                            <table class="diagnostics-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Usuarios</th>
+                                        <th>Modelo</th>
+                                        <th>Duracion</th>
+                                        <th>CPU Max</th>
+                                        <th>GPU Max</th>
+                                        <th>Latencia Avg</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="diagnosticsHistoryBody">
+                                    <tr>
+                                        <td colspan="10" class="loading">Cargando historial...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
 
         </main>
     </div>
@@ -410,6 +888,17 @@
                         <div class="color-swatch" data-color="orange" style="background: #fd7e14;"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para detalles de sesión/tarea -->
+    <div id="sessionDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px; max-height: 800px; overflow-y: auto;">
+            <span class="close" id="closeSessionModal">&times;</span>
+            <h2><i class="fas fa-info-circle"></i> Detalles de la Tarea</h2>
+            <div id="sessionDetailContent">
+                <div class="loading">Cargando detalles...</div>
             </div>
         </div>
     </div>

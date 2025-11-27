@@ -1,0 +1,31 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    default-libmysqlclient-dev \
+    pkg-config \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements PROD (más ligero y rápido)
+COPY backend/requirements-prod.txt ./requirements.txt
+
+# Instalar dependencias de Python
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copiar código del backend
+COPY backend/ .
+
+# Copiar PDFs al contenedor (si existen)
+RUN if [ -d "data/pdfs" ]; then cp -r data/pdfs/* /app/data/pdfs/ || true; fi
+
+# Crear directorios necesarios
+RUN mkdir -p data/cache data/chroma_db data/faiss_index data/pdfs
+
+# Comando de inicio del worker Celery
+CMD ["celery", "-A", "celery_worker.celery_app", "worker", "--loglevel=info", "--concurrency=2", "--pool=solo"]

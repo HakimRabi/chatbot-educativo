@@ -10,15 +10,31 @@ import json
 import os
 from glob import glob
 import re
+import psutil
+import platform
+import asyncio
+import time
+from threading import Thread
+from functools import lru_cache
+import threading
+import traceback
 
 # Importa estas dependencias al inicio del archivo
 from fastapi import APIRouter, Request, HTTPException, File, UploadFile
 import shutil
 from pathlib import Path
 
-# Create router for dashboard endpoints
+# Create router and logger BEFORE using them
 router = APIRouter()
 logger = logging.getLogger("dashboard")
+
+# Intentar importar GPUtil para GPU (opcional)
+try:
+    import GPUtil
+    GPU_AVAILABLE = True
+except ImportError:
+    GPU_AVAILABLE = False
+    logger.warning("GPUtil no está instalado. Las métricas de GPU no estarán disponibles.")
 
 # Log router creation
 logger.info("Dashboard router created successfully")
@@ -36,6 +52,13 @@ fragmentos = []
 using_vector_db = False
 using_chroma = False
 
+# Cache simple para estado del sistema (evita llamadas repetidas a Ollama)
+_system_health_cache = {
+    "data": None,
+    "timestamp": 0,
+    "ttl": 30  # 30 segundos de cache
+}
+_cache_lock = threading.Lock()
 
 # Define la ruta al directorio de PDFs
 # Esto asegura que la ruta sea correcta sin importar desde dónde se ejecute el script.
@@ -461,16 +484,12 @@ def get_dashboard_stats():
             # Verificar base de datos
             system_details.append("Base de datos conectada")
             
-            # Verificar LLM - MEJORADO
+            # Verificar LLM - OPTIMIZADO (sin llamar invoke, solo verificar que existe)
             try:
                 current_llm = ai_info["llm"]
                 if current_llm:
-                    test_response = current_llm.invoke("Test")
-                    if test_response and len(test_response.strip()) > 0:
-                        system_details.append("LLM funcionando correctamente")
-                    else:
-                        system_status = "limitado"
-                        system_details.append("LLM responde pero con problemas")
+                    # Solo verificamos que el LLM existe, no hacemos llamadas
+                    system_details.append("LLM inicializado")
                 else:
                     system_status = "limitado"
                     system_details.append("LLM no inicializado")
@@ -860,14 +879,28 @@ def get_dashboard_recent_feedback(limit: int = 50):
 
 @router.get("/system-health")
 def get_system_health():
-    """Verifica el estado de salud del sistema - MEJORADO"""
+    """Verifica el estado de salud del sistema - OPTIMIZADO CON CACHE"""
     try:
+        # Verificar cache
+        with _cache_lock:
+            now = time.time()
+            if (_system_health_cache["data"] is not None and 
+                (now - _system_health_cache["timestamp"]) < _system_health_cache["ttl"]):
+                logger.info("Returning cached system health (TTL: {}s remaining)".format(
+                    int(_system_health_cache["ttl"] - (now - _system_health_cache["timestamp"]))
+                ))
+                return _system_health_cache["data"]
+        
         # Obtener información actualizada del sistema de IA
         ai_info = get_ai_system_info()
         
         health_status = {
             "database_connected": False,
             "llm_status": "disconnected",
+            "models_status": {"llama3": "unknown", "phi4": "unknown"},
+            "models_detail": "",
+            "workers_status": "unknown",
+            "workers_count": 0,
             "total_documents": ai_info["documentos_count"],
             "total_fragments": ai_info["fragmentos_count"],
             "pdf_files_loaded": 0,
@@ -904,28 +937,78 @@ def get_system_health():
             health_status["database"] = False
             health_status["database_connected"] = False
         
-        # Verificar LLM (Ollama) - MEJORADO
+        # Verificar modelos Ollama (llama3 y phi4)
         try:
-            current_llm = ai_info["llm"]
-            if current_llm:
-                # Intentar una consulta simple para verificar que funciona
-                test_response = current_llm.invoke("Hola")
-                if test_response and len(test_response.strip()) > 0:
-                    health_status["llm_status"] = "connected"
-                    health_status["ollama"] = True
-                    logger.info("LLM test successful")
+            import requests
+            from config import OLLAMA_URL
+            # Usar la variable de entorno OLLAMA_URL (funciona en Docker y Kubernetes)
+            ollama_url = f"{OLLAMA_URL}/api/tags"
+            response = requests.get(ollama_url, timeout=3)
+            
+            if response.status_code == 200:
+                data = response.json()
+                models = data.get('models', [])
+                model_names = [m['name'] for m in models]
+                
+                # Verificar llama3
+                if any('llama3' in name.lower() for name in model_names):
+                    health_status["models_status"]["llama3"] = "activo"
                 else:
-                    health_status["llm_status"] = "error_empty_response"
-                    health_status["ollama"] = False
-                    logger.warning("LLM returned empty response")
+                    health_status["models_status"]["llama3"] = "no_encontrado"
+                
+                # Verificar phi4
+                if any('phi4' in name.lower() or 'phi-4' in name.lower() for name in model_names):
+                    health_status["models_status"]["phi4"] = "activo"
+                else:
+                    health_status["models_status"]["phi4"] = "no_encontrado"
+                
+                health_status["llm_status"] = "connected"
+                health_status["ollama"] = True
+                
+                # Generar descripcion
+                llama3_ok = health_status["models_status"]["llama3"] == "activo"
+                phi4_ok = health_status["models_status"]["phi4"] == "activo"
+                
+                if llama3_ok and phi4_ok:
+                    health_status["models_detail"] = "Ambos funcionando"
+                elif llama3_ok:
+                    health_status["models_detail"] = "Solo Llama3"
+                elif phi4_ok:
+                    health_status["models_detail"] = "Solo Phi4"
+                else:
+                    health_status["models_detail"] = "Ninguno disponible"
+                    
+                logger.info(f"Modelos detectados: Llama3={llama3_ok}, Phi4={phi4_ok}")
             else:
-                health_status["llm_status"] = "not_initialized"
+                health_status["llm_status"] = "error"
                 health_status["ollama"] = False
-                logger.warning("LLM is None")
+                health_status["models_status"] = {"llama3": "error", "phi4": "error"}
+                health_status["models_detail"] = "Error de conexión"
         except Exception as e:
             health_status["llm_status"] = f"error: {str(e)[:50]}"
             health_status["ollama"] = False
-            logger.error(f"Error verificando LLM: {e}")
+            health_status["models_status"] = {"llama3": "error", "phi4": "error"}
+            health_status["models_detail"] = "Error al verificar"
+            logger.error(f"Error verificando modelos Ollama: {e}")
+        
+        # Verificar Workers de Celery
+        try:
+            from celery_worker import celery_app
+            inspect = celery_app.control.inspect()
+            stats = inspect.stats()
+            
+            if stats:
+                health_status["workers_count"] = len(stats)
+                health_status["workers_status"] = "activo"
+                logger.info(f"Workers Celery activos: {health_status['workers_count']}")
+            else:
+                health_status["workers_count"] = 0
+                health_status["workers_status"] = "inactivo"
+                logger.warning("No se encontraron workers de Celery activos")
+        except Exception as e:
+            health_status["workers_count"] = 0
+            health_status["workers_status"] = "error"
+            logger.error(f"Error verificando workers: {e}")
         
         # Verificar Vector Store - MEJORADO
         try:
@@ -944,7 +1027,8 @@ def get_system_health():
         # Estado general del sistema - MEJORADO
         if (health_status["database_connected"] and 
             health_status["llm_status"] == "connected" and
-            health_status["total_fragments"] > 0):
+            health_status["total_fragments"] > 0 and
+            health_status["workers_count"] > 0):
             health_status["overall_status"] = "healthy"
         elif (health_status["database_connected"] and 
               health_status["llm_status"] == "connected"):
@@ -961,11 +1045,20 @@ def get_system_health():
             "documents_count": ai_info["documentos_count"],
             "using_vector_db": ai_info["using_vector_db"],
             "using_chroma": ai_info["using_chroma"],
-            "llm_available": ai_info["llm"] is not None
+            "llm_available": ai_info["llm"] is not None,
+            "workers_active": health_status["workers_count"] > 0
         }
         
         logger.info(f"System health check completed: {health_status['overall_status']}")
         logger.info(f"📊 Final response - total_fragments: {health_status['total_fragments']}")
+        logger.info(f"🔧 Workers: {health_status['workers_count']} - Models: {health_status.get('models_detail', 'Unknown')}")
+        
+        # Guardar en cache
+        with _cache_lock:
+            _system_health_cache["data"] = health_status
+            _system_health_cache["timestamp"] = time.time()
+            logger.info(f"System health cached for {_system_health_cache['ttl']}s")
+        
         return health_status
         
     except Exception as e:
@@ -976,6 +1069,12 @@ def get_system_health():
             "database_connected": False,
             "ollama": False,
             "llm_status": "error",
+            "models_status": {"llama3": "error", "phi4": "error"},
+            "models_detail": "Error al verificar",
+            "models_detail": "Error al verificar",
+            "phi4_model": "phi4:14b-q4_0",
+            "workers_status": "error",
+            "workers_count": 0,
             "vector_store": False,
             "vector_db_status": "error",
             "total_documents": 0,
@@ -1466,6 +1565,40 @@ async def delete_user(user_id: int):
     finally:
         db.close()
 
+@router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str):
+    """
+    Elimina una tarea de chat de la base de datos.
+    """
+    logger.info(f"Solicitud para eliminar tarea ID: {task_id}")
+    
+    if not is_database_available():
+        raise HTTPException(status_code=503, detail="Base de datos no disponible")
+    
+    try:
+        with SessionLocal() as db:
+            from models import ChatTask
+            
+            # Buscar la tarea
+            task = db.query(ChatTask).filter(ChatTask.task_id == task_id).first()
+            
+            if not task:
+                logger.warning(f"Intento de eliminar tarea no existente. ID: {task_id}")
+                raise HTTPException(status_code=404, detail="Tarea no encontrada")
+            
+            # Eliminar la tarea
+            db.delete(task)
+            db.commit()
+            
+            logger.info(f"Tarea {task_id} eliminada exitosamente.")
+            return {"success": True, "message": "Tarea eliminada exitosamente."}
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error al eliminar la tarea {task_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al eliminar la tarea: {str(e)}")
+
 @router.get("/check-access")
 def check_dashboard_access():
     """Verifica que el dashboard esté accesible"""
@@ -1488,6 +1621,779 @@ def check_dashboard_access():
             "message": f"Error: {str(e)}",
             "timestamp": datetime.now().isoformat()
         }
+
+def get_size_format(bytes_value):
+    """Convierte bytes a formato legible"""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_value < 1024.0:
+            return f"{bytes_value:.2f} {unit}"
+        bytes_value /= 1024.0
+    return f"{bytes_value:.2f} PB"
+
+@router.get("/system-resources")
+def get_system_resources():
+    """Obtiene métricas del sistema en tiempo real"""
+    try:
+        # CPU
+        cpu_percent = psutil.cpu_percent(interval=1)
+        cpu_count_logical = psutil.cpu_count(logical=True)
+        cpu_count_physical = psutil.cpu_count(logical=False)
+        cpu_freq = psutil.cpu_freq()
+        
+        # Memoria RAM
+        memory = psutil.virtual_memory()
+        
+        # Disco
+        disk = psutil.disk_usage('/')
+        
+        # Red
+        net_io = psutil.net_io_counters()
+        
+        # Temperatura (intentar obtener)
+        temps = {}
+        try:
+            temps = psutil.sensors_temperatures()
+        except:
+            temps = {}
+        
+        # GPU (detectar de multiples formas)
+        gpu_info = {"available": False}
+        
+        # Metodo 1: GPUtil (NVIDIA principalmente)
+        if GPU_AVAILABLE:
+            try:
+                gpus = GPUtil.getGPUs()
+                if gpus:
+                    gpu = gpus[0]
+                    gpu_info = {
+                        "available": True,
+                        "name": gpu.name,
+                        "vendor": "NVIDIA",
+                        "load": f"{gpu.load * 100:.1f}%",
+                        "load_percent": gpu.load * 100,
+                        "memory_used": get_size_format(gpu.memoryUsed * 1024 * 1024),
+                        "memory_total": get_size_format(gpu.memoryTotal * 1024 * 1024),
+                        "memory_percent": f"{(gpu.memoryUsed / gpu.memoryTotal) * 100:.1f}%",
+                        "temperature": f"{gpu.temperature}°C" if gpu.temperature else "N/A"
+                    }
+            except Exception as e:
+                logger.debug(f"GPUtil no detectó GPU: {e}")
+        
+        # Metodo 2: Detectar AMD/Intel/Otras GPUs via sistema
+        if not gpu_info["available"]:
+            try:
+                # Intentar detectar via lspci en Linux o wmic en Windows
+                import subprocess
+                if platform.system() == "Windows":
+                    result = subprocess.run(
+                        ["wmic", "path", "win32_VideoController", "get", "name"],
+                        capture_output=True, text=True, timeout=2
+                    )
+                    if result.returncode == 0 and result.stdout:
+                        lines = [l.strip() for l in result.stdout.split('\n') if l.strip() and l.strip() != 'Name']
+                        if lines:
+                            gpu_name = lines[0]
+                            gpu_info = {
+                                "available": True,
+                                "name": gpu_name,
+                                "vendor": "AMD" if "AMD" in gpu_name.upper() else "Intel" if "INTEL" in gpu_name.upper() else "Unknown",
+                                "load": "N/A",
+                                "load_percent": 0,
+                                "memory_used": "N/A",
+                                "memory_total": "N/A",
+                                "memory_percent": "N/A",
+                                "temperature": "N/A"
+                            }
+                elif platform.system() == "Linux":
+                    result = subprocess.run(["lspci"], capture_output=True, text=True, timeout=2)
+                    if result.returncode == 0:
+                        for line in result.stdout.split('\n'):
+                            if 'VGA' in line or 'Display' in line or '3D' in line:
+                                gpu_name = line.split(': ')[-1].strip()
+                                gpu_info = {
+                                    "available": True,
+                                    "name": gpu_name,
+                                    "vendor": "AMD" if "AMD" in gpu_name.upper() else "Intel" if "INTEL" in gpu_name.upper() else "NVIDIA" if "NVIDIA" in gpu_name.upper() else "Unknown",
+                                    "load": "N/A",
+                                    "load_percent": 0,
+                                    "memory_used": "N/A",
+                                    "memory_total": "N/A",
+                                    "memory_percent": "N/A",
+                                    "temperature": "N/A"
+                                }
+                                break
+            except Exception as e:
+                logger.debug(f"Detección alternativa de GPU falló: {e}")
+        
+        if not gpu_info["available"]:
+            gpu_info = {"available": False, "message": "No se detectó GPU"}
+        
+        # Información del sistema
+        system_info = {
+            "platform": platform.system(),
+            "platform_release": platform.release(),
+            "platform_version": platform.version(),
+            "architecture": platform.machine(),
+            "processor": platform.processor(),
+            "hostname": platform.node()
+        }
+        
+        # Temperatura CPU
+        cpu_temp = "N/A"
+        if temps:
+            # Intentar obtener temperatura de diferentes fuentes
+            for name, entries in temps.items():
+                if entries:
+                    cpu_temp = f"{entries[0].current}°C"
+                    break
+        
+        return {
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "cpu": {
+                "usage_percent": cpu_percent,
+                "count_logical": cpu_count_logical,
+                "count_physical": cpu_count_physical,
+                "frequency_current": f"{cpu_freq.current:.0f} MHz" if cpu_freq else "N/A",
+                "frequency_max": f"{cpu_freq.max:.0f} MHz" if cpu_freq else "N/A",
+                "temperature": cpu_temp
+            },
+            "memory": {
+                "total": get_size_format(memory.total),
+                "available": get_size_format(memory.available),
+                "used": get_size_format(memory.used),
+                "percent": memory.percent
+            },
+            "disk": {
+                "total": get_size_format(disk.total),
+                "used": get_size_format(disk.used),
+                "free": get_size_format(disk.free),
+                "percent": disk.percent
+            },
+            "network": {
+                "bytes_sent": get_size_format(net_io.bytes_sent),
+                "bytes_recv": get_size_format(net_io.bytes_recv),
+                "packets_sent": net_io.packets_sent,
+                "packets_recv": net_io.packets_recv
+            },
+            "gpu": gpu_info,
+            "system": system_info
+        }
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo recursos del sistema: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+@router.get("/workers-status")
+def get_workers_status():
+    """Obtiene el estado de los workers de Celery"""
+    try:
+        from celery_worker import celery_app
+        
+        # Inspeccionar workers activos
+        inspect = celery_app.control.inspect()
+        
+        # Obtener estadísticas
+        stats = inspect.stats()
+        active_tasks = inspect.active()
+        registered_tasks = inspect.registered()
+        
+        workers_info = []
+        total_workers = 0
+        
+        if stats:
+            total_workers = len(stats)
+            for worker_name, worker_stats in stats.items():
+                worker_info = {
+                    "name": worker_name,
+                    "status": "activo",
+                    "pool": worker_stats.get('pool', {}).get('implementation', 'N/A'),
+                    "max_concurrency": worker_stats.get('pool', {}).get('max-concurrency', 'N/A'),
+                    "active_tasks": len(active_tasks.get(worker_name, [])) if active_tasks else 0,
+                    "total_tasks": worker_stats.get('total', {})
+                }
+                workers_info.append(worker_info)
+        
+        return {
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "total_workers": total_workers,
+            "workers": workers_info,
+            "active": total_workers > 0
+        }
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo estado de workers: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "total_workers": 0,
+            "workers": [],
+            "active": False,
+            "timestamp": datetime.now().isoformat()
+        }
+
+@router.get("/active-tasks")
+def get_active_tasks():
+    """
+    Obtiene todas las tareas de chat activas y recientes desde la base de datos
+    """
+    try:
+        if not is_database_available():
+            return {
+                "active_count": 0,
+                "total_count": 0,
+                "stats": {"pending": 0, "processing": 0, "completed": 0, "failed": 0},
+                "tasks": [],
+                "error": "Database not available",
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        with engine.connect() as connection:
+            # Importar ChatTask del models
+            from models import ChatTask
+            
+            # Obtener tareas activas y recientes (últimas 24 horas) con JOIN a users para obtener nombre
+            query = text("""
+                SELECT 
+                    t.id, t.task_id, t.user_id, t.session_id,
+                    t.query, t.query_length, t.response, t.response_length,
+                    t.model, t.worker_name, t.status,
+                    t.started_at, t.completed_at, t.processing_time,
+                    t.vector_db_used, t.documents_count, t.error_message,
+                    t.created_at,
+                    u.nombre as username
+                FROM chat_tasks t
+                LEFT JOIN users u ON t.user_id = u.id
+                WHERE t.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                ORDER BY t.created_at DESC
+                LIMIT 100
+            """)
+            
+            result = connection.execute(query)
+            tasks = []
+            
+            for row in result:
+                # Calcular tiempo transcurrido si está en procesamiento
+                elapsed_time = None
+                if row.status == 'PROCESSING' and row.started_at:
+                    elapsed_time = (datetime.now() - row.started_at).total_seconds()
+                elif row.processing_time:
+                    elapsed_time = row.processing_time
+                
+                tasks.append({
+                    'id': row.id,
+                    'task_id': row.task_id,
+                    'user_id': row.user_id,
+                    'username': row.username,  # Nombre del usuario desde JOIN
+                    'session_id': row.session_id,
+                    'query': row.query[:150] + '...' if row.query and len(row.query) > 150 else row.query,
+                    'query_full': row.query,  # Para modal
+                    'query_length': row.query_length,
+                    'response': row.response[:200] + '...' if row.response and len(row.response) > 200 else row.response,
+                    'response_full': row.response,  # Para modal
+                    'response_length': row.response_length,
+                    'model': row.model,
+                    'worker_name': row.worker_name,
+                    'status': row.status.lower() if row.status else 'pending',  # Convertir a minúsculas para frontend
+                    'started_at': row.started_at.isoformat() if row.started_at else None,
+                    'completed_at': row.completed_at.isoformat() if row.completed_at else None,
+                    'processing_time': round(row.processing_time, 2) if row.processing_time else None,
+                    'elapsed_time': round(elapsed_time, 2) if elapsed_time else None,
+                    'vector_db_used': bool(row.vector_db_used),
+                    'documents_count': row.documents_count,
+                    'error_message': row.error_message,
+                    'created_at': row.created_at.isoformat() if row.created_at else None
+                })
+            
+            # Contar por estado (en minúsculas para consistencia con frontend)
+            status_counts = {
+                'pending': sum(1 for t in tasks if t['status'] == 'pending'),
+                'processing': sum(1 for t in tasks if t['status'] == 'processing'),
+                'completed': sum(1 for t in tasks if t['status'] == 'completed'),
+                'failed': sum(1 for t in tasks if t['status'] == 'failed')
+            }
+            
+            logger.info(f"📊 Active tasks retrieved: {len(tasks)} total")
+            logger.info(f"   - Pending: {status_counts['pending']}")
+            logger.info(f"   - Processing: {status_counts['processing']}")
+            logger.info(f"   - Completed: {status_counts['completed']}")
+            logger.info(f"   - Failed: {status_counts['failed']}")
+            
+            return {
+                "active_count": status_counts['pending'] + status_counts['processing'],
+                "total_count": len(tasks),
+                "stats": status_counts,
+                "tasks": tasks,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting active tasks: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return {
+            "active_count": 0,
+            "total_count": 0,
+            "stats": {"pending": 0, "processing": 0, "completed": 0, "failed": 0},
+            "tasks": [],
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+# =====================================================
+# DIAGNOSTICS - STRESS TESTS ENDPOINTS
+# =====================================================
+
+# Importar modulos de diagnostico
+try:
+    from diagnostics import StressTestRunner, MetricsCollector, ReportGenerator
+    from models import StressTest, StressTestStatusEnum, StartStressTestRequest
+    DIAGNOSTICS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Modulo de diagnosticos no disponible: {e}")
+    DIAGNOSTICS_AVAILABLE = False
+
+# Cache para tests en ejecucion
+_running_tests = {}
+_tests_lock = threading.Lock()
+
+
+@router.get("/diagnostics/hardware")
+async def get_hardware_info():
+    """Obtiene informacion del hardware del sistema"""
+    if not DIAGNOSTICS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Modulo de diagnosticos no disponible")
+    
+    try:
+        collector = MetricsCollector()
+        hardware = collector.get_hardware_info()
+        return {"success": True, "hardware": hardware}
+    except Exception as e:
+        logger.error(f"Error obteniendo hardware info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/diagnostics/tests")
+async def get_stress_tests(limit: int = 20):
+    """Obtiene historial de tests de estres"""
+    try:
+        engine_db = engine
+        with engine_db.connect() as connection:
+            query = text("""
+                SELECT 
+                    t.id, t.test_id, t.name, t.config, t.status,
+                    t.started_at, t.completed_at, t.duration_seconds,
+                    t.hardware_info, t.summary, t.error_message,
+                    t.created_by, t.created_at,
+                    u.nombre as created_by_name
+                FROM stress_tests t
+                LEFT JOIN users u ON t.created_by = u.id
+                ORDER BY t.created_at DESC
+                LIMIT :limit
+            """)
+            
+            result = connection.execute(query, {"limit": limit})
+            tests = []
+            
+            for row in result:
+                summary = row.summary if isinstance(row.summary, dict) else (
+                    json.loads(row.summary) if row.summary else {}
+                )
+                config = row.config if isinstance(row.config, dict) else (
+                    json.loads(row.config) if row.config else {}
+                )
+                
+                tests.append({
+                    "id": row.id,
+                    "test_id": row.test_id,
+                    "name": row.name,
+                    "config": config,
+                    "status": row.status,
+                    "started_at": row.started_at.isoformat() if row.started_at else None,
+                    "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+                    "duration_seconds": row.duration_seconds,
+                    "summary": summary,
+                    "error_message": row.error_message,
+                    "created_by_name": row.created_by_name,
+                    "created_at": row.created_at.isoformat() if row.created_at else None
+                })
+            
+            return {"success": True, "tests": tests, "count": len(tests)}
+            
+    except Exception as e:
+        logger.error(f"Error obteniendo tests: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/diagnostics/tests/{test_id}")
+async def get_stress_test_detail(test_id: str):
+    """Obtiene detalle completo de un test de estres"""
+    try:
+        db = SessionLocal()
+        try:
+            test = db.query(StressTest).filter(StressTest.test_id == test_id).first()
+            
+            if not test:
+                raise HTTPException(status_code=404, detail="Test no encontrado")
+            
+            return {
+                "success": True,
+                "test": {
+                    "id": test.id,
+                    "test_id": test.test_id,
+                    "name": test.name,
+                    "config": test.config,
+                    "status": test.status.value if test.status else "PENDING",
+                    "started_at": test.started_at.isoformat() if test.started_at else None,
+                    "completed_at": test.completed_at.isoformat() if test.completed_at else None,
+                    "duration_seconds": test.duration_seconds,
+                    "hardware_info": test.hardware_info,
+                    "metrics_snapshots": test.metrics_snapshots,
+                    "summary": test.summary,
+                    "log_entries": test.log_entries,
+                    "error_message": test.error_message,
+                    "created_at": test.created_at.isoformat() if test.created_at else None
+                }
+            }
+        finally:
+            db.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error obteniendo test {test_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/diagnostics/tests/start")
+async def start_stress_test(request: Request):
+    """Inicia un nuevo test de estres"""
+    if not DIAGNOSTICS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Modulo de diagnosticos no disponible")
+    
+    try:
+        body = await request.json()
+        name = body.get("name", "Test sin nombre")
+        config = body.get("config", {})
+        user_id = body.get("user_id", 1)
+        
+        # Generar ID unico
+        import uuid
+        test_id = str(uuid.uuid4())
+        
+        # Crear registro en BD
+        db = SessionLocal()
+        try:
+            new_test = StressTest(
+                test_id=test_id,
+                name=name,
+                config=config,
+                status=StressTestStatusEnum.PENDING,
+                created_by=user_id
+            )
+            db.add(new_test)
+            db.commit()
+            db.refresh(new_test)
+            
+            # Iniciar test en background
+            import threading
+            thread = threading.Thread(
+                target=_run_stress_test_background,
+                args=(test_id, config),
+                daemon=True
+            )
+            thread.start()
+            
+            with _tests_lock:
+                _running_tests[test_id] = {
+                    "thread": thread,
+                    "logs": [],
+                    "snapshots": []
+                }
+            
+            return {
+                "success": True,
+                "test_id": test_id,
+                "message": "Test iniciado"
+            }
+            
+        finally:
+            db.close()
+            
+    except Exception as e:
+        logger.error(f"Error iniciando test: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _run_stress_test_background(test_id: str, config: dict):
+    """Ejecuta el test de estres en background"""
+    import asyncio
+    
+    db = SessionLocal()
+    logs = []
+    snapshots = []
+    
+    def on_log(message: str):
+        logs.append(message)
+        with _tests_lock:
+            if test_id in _running_tests:
+                _running_tests[test_id]["logs"] = logs[-100:]  # Ultimos 100 logs
+    
+    def on_snapshot(snapshot: dict):
+        snapshots.append(snapshot)
+        with _tests_lock:
+            if test_id in _running_tests:
+                _running_tests[test_id]["snapshots"] = snapshots[-50:]  # Ultimos 50 snapshots
+    
+    try:
+        # Actualizar estado a PROCESSING
+        test = db.query(StressTest).filter(StressTest.test_id == test_id).first()
+        if test:
+            test.status = StressTestStatusEnum.PROCESSING
+            test.started_at = datetime.now()
+            db.commit()
+        
+        # Ejecutar test - usar 127.0.0.1 para conexion local dentro del contenedor
+        # Esto evita problemas de resolucion DNS con 'localhost'
+        runner = StressTestRunner(base_url="http://127.0.0.1:8000")
+        
+        # Crear event loop para asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            result = loop.run_until_complete(
+                runner.run_test(config, on_log=on_log, on_snapshot=on_snapshot)
+            )
+        finally:
+            loop.close()
+        
+        # Guardar resultados
+        test = db.query(StressTest).filter(StressTest.test_id == test_id).first()
+        if test:
+            test.status = StressTestStatusEnum.COMPLETED
+            test.completed_at = datetime.now()
+            test.duration_seconds = result.get("duration_seconds", 0)
+            test.hardware_info = result.get("hardware_info", {})
+            test.metrics_snapshots = result.get("snapshots", [])
+            test.summary = result.get("summary", {})
+            test.log_entries = logs
+            db.commit()
+        
+        logger.info(f"Test {test_id} completado exitosamente")
+        
+    except Exception as e:
+        logger.error(f"Error en test {test_id}: {e}")
+        logger.error(traceback.format_exc())
+        
+        test = db.query(StressTest).filter(StressTest.test_id == test_id).first()
+        if test:
+            test.status = StressTestStatusEnum.FAILED
+            test.completed_at = datetime.now()
+            test.error_message = str(e)
+            test.log_entries = logs
+            db.commit()
+    
+    finally:
+        db.close()
+        
+        with _tests_lock:
+            if test_id in _running_tests:
+                del _running_tests[test_id]
+
+
+@router.get("/diagnostics/tests/{test_id}/status")
+async def get_stress_test_status(test_id: str):
+    """Obtiene estado actual de un test en ejecucion"""
+    try:
+        # Verificar si esta en ejecucion
+        with _tests_lock:
+            if test_id in _running_tests:
+                running_data = _running_tests[test_id]
+                return {
+                    "success": True,
+                    "status": "PROCESSING",
+                    "logs": running_data.get("logs", []),
+                    "snapshots": running_data.get("snapshots", []),
+                    "is_running": True
+                }
+        
+        # Si no esta en ejecucion, buscar en BD
+        db = SessionLocal()
+        try:
+            test = db.query(StressTest).filter(StressTest.test_id == test_id).first()
+            
+            if not test:
+                raise HTTPException(status_code=404, detail="Test no encontrado")
+            
+            return {
+                "success": True,
+                "status": test.status.value if test.status else "PENDING",
+                "logs": test.log_entries or [],
+                "snapshots": test.metrics_snapshots or [],
+                "is_running": False,
+                "summary": test.summary
+            }
+        finally:
+            db.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error obteniendo status {test_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/diagnostics/tests/{test_id}/stop")
+async def stop_stress_test(test_id: str):
+    """Detiene un test en ejecucion"""
+    if not DIAGNOSTICS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Modulo de diagnosticos no disponible")
+    
+    try:
+        with _tests_lock:
+            if test_id not in _running_tests:
+                raise HTTPException(status_code=404, detail="Test no esta en ejecucion")
+        
+        # Marcar para detener (el runner verifica should_stop)
+        # Por ahora solo actualizamos el estado
+        db = SessionLocal()
+        try:
+            test = db.query(StressTest).filter(StressTest.test_id == test_id).first()
+            if test:
+                test.status = StressTestStatusEnum.FAILED
+                test.completed_at = datetime.now()
+                test.error_message = "Test detenido por el usuario"
+                db.commit()
+        finally:
+            db.close()
+        
+        return {"success": True, "message": "Test detenido"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deteniendo test {test_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/diagnostics/tests/{test_id}/export")
+async def export_stress_test(test_id: str, format: str = "csv"):
+    """Exporta resultados de un test"""
+    if not DIAGNOSTICS_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Modulo de diagnosticos no disponible")
+    
+    try:
+        db = SessionLocal()
+        try:
+            test = db.query(StressTest).filter(StressTest.test_id == test_id).first()
+            
+            if not test:
+                raise HTTPException(status_code=404, detail="Test no encontrado")
+            
+            # Preparar datos
+            test_data = {
+                "test_id": test.test_id,
+                "name": test.name,
+                "config": test.config,
+                "status": test.status.value if test.status else "PENDING",
+                "started_at": test.started_at.isoformat() if test.started_at else None,
+                "completed_at": test.completed_at.isoformat() if test.completed_at else None,
+                "duration_seconds": test.duration_seconds,
+                "hardware_info": test.hardware_info or {},
+                "metrics_snapshots": test.metrics_snapshots or [],
+                "summary": test.summary or {},
+                "error_message": test.error_message
+            }
+            
+            # Generar reporte
+            from fastapi.responses import Response
+            
+            if format == "csv":
+                content = ReportGenerator.generate_csv(test_data)
+                media_type = "text/csv; charset=utf-8"
+                filename = f"stress_test_{test_id}.csv"
+                return Response(
+                    content=content.encode('utf-8'),
+                    media_type=media_type,
+                    headers={"Content-Disposition": f"attachment; filename={filename}"}
+                )
+            elif format == "txt":
+                content = ReportGenerator.generate_txt(test_data)
+                media_type = "text/plain; charset=utf-8"
+                filename = f"stress_test_{test_id}.txt"
+                return Response(
+                    content=content.encode('utf-8'),
+                    media_type=media_type,
+                    headers={"Content-Disposition": f"attachment; filename={filename}"}
+                )
+            elif format == "json":
+                content = ReportGenerator.generate_json(test_data)
+                media_type = "application/json; charset=utf-8"
+                filename = f"stress_test_{test_id}.json"
+                return Response(
+                    content=content.encode('utf-8'),
+                    media_type=media_type,
+                    headers={"Content-Disposition": f"attachment; filename={filename}"}
+                )
+            elif format == "xlsx":
+                content = ReportGenerator.generate_xlsx(test_data)
+                media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                filename = f"stress_test_{test_id}.xlsx"
+                return Response(
+                    content=content,
+                    media_type=media_type,
+                    headers={"Content-Disposition": f"attachment; filename={filename}"}
+                )
+            else:
+                raise HTTPException(status_code=400, detail="Formato no soportado. Use: csv, txt, json, xlsx")
+            
+        finally:
+            db.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exportando test {test_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/diagnostics/tests/{test_id}")
+async def delete_stress_test(test_id: str):
+    """Elimina un test de estres"""
+    try:
+        db = SessionLocal()
+        try:
+            test = db.query(StressTest).filter(StressTest.test_id == test_id).first()
+            
+            if not test:
+                raise HTTPException(status_code=404, detail="Test no encontrado")
+            
+            # No permitir eliminar tests en ejecucion
+            with _tests_lock:
+                if test_id in _running_tests:
+                    raise HTTPException(status_code=400, detail="No se puede eliminar un test en ejecucion")
+            
+            db.delete(test)
+            db.commit()
+            
+            return {"success": True, "message": "Test eliminado"}
+            
+        finally:
+            db.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error eliminando test {test_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # Verification and logging at module level
 def verify_router_setup():

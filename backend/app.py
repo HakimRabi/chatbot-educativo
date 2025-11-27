@@ -1,16 +1,47 @@
 # ===== IMPORTS =====
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sse_starlette.sse import EventSourceResponse
 import logging
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
 import json
 import uuid
+import os
 from pydantic import BaseModel
 from datetime import datetime
+
+# ===== IMPORTS PARA ARQUITECTURA ASINCRÓNICA =====
+try:
+    from celery import Celery
+    from celery.result import AsyncResult
+    CELERY_AVAILABLE = True
+    logger = logging.getLogger("chatbot_app")
+    logger.info("🔧 Celery disponible - arquitectura asincrónica habilitada")
+except ImportError:
+    CELERY_AVAILABLE = False
+    logger = logging.getLogger("chatbot_app")
+    logger.warning("⚠️ Celery no disponible - usando modo sincrónico")
+
+# Sistema de métricas - FASE 1
+try:
+    from metrics import (
+        start_request_tracking, 
+        end_request_tracking, 
+        record_model_switch,
+        get_metrics_summary,
+        get_bottleneck_analysis
+    )
+    METRICS_ENABLED = True
+    logger = logging.getLogger("chatbot_app")
+    logger.info("🔍 Sistema de métricas habilitado")
+except Exception as e:
+    METRICS_ENABLED = False
+    logger = logging.getLogger("chatbot_app")
+    logger.warning(f"⚠️ Sistema de métricas deshabilitado: {e}")
 
 # Configurar logging primero
 logging.basicConfig(
@@ -22,6 +53,27 @@ logger = logging.getLogger("chatbot_app")
 
 # Crear la aplicación FastAPI
 app = FastAPI()
+
+# ===== CONFIGURACIÓN DE CELERY PARA ARQUITECTURA ASINCRÓNICA =====
+celery_app = None
+if CELERY_AVAILABLE:
+    try:
+        # Obtener URL de Redis desde variable de entorno (para Docker) o usar localhost por defecto
+        REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+        REDIS_URL = f'redis://{REDIS_HOST}:6379/0'
+        
+        celery_app = Celery('chatbot_worker')
+        celery_app.config_from_object({
+            'broker_url': REDIS_URL,
+            'result_backend': REDIS_URL,
+            'task_serializer': 'json',
+            'accept_content': ['json'],
+            'result_serializer': 'json',
+        })
+        logger.info(f"✅ Cliente Celery configurado correctamente con Redis: {REDIS_HOST}")
+    except Exception as e:
+        logger.error(f"❌ Error configurando Celery: {e}")
+        CELERY_AVAILABLE = False
 
 # Ruta para manejar redirecciones incorrectas de /pages/index.html
 @app.get("/pages/index.html")
@@ -43,10 +95,11 @@ app.add_middleware(
     expose_headers=["X-Request-ID", "X-Processing-Time"]
 )
 
-# Montar archivos estáticos - CONFIGURACIÓN CORREGIDA
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
-app.mount("/assets", StaticFiles(directory="../frontend/assets"), name="assets")
-app.mount("/pages", StaticFiles(directory="../frontend/pages"), name="pages")
+# Montar archivos estáticos - COMENTADO PARA DOCKER
+# En Docker, el frontend se sirve desde el contenedor de Nginx
+# app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+# app.mount("/assets", StaticFiles(directory="../frontend/assets"), name="assets")
+# app.mount("/pages", StaticFiles(directory="../frontend/pages"), name="pages")
 
 # Configurar executor para tareas asíncronas
 executor = ThreadPoolExecutor(max_workers=4)
@@ -69,6 +122,15 @@ def serve_dashboard():
 @app.get("/pages/dashboard")
 def serve_dashboard_pages():
     return FileResponse("../frontend/pages/dashboard.html")
+
+# FASE 1: Ruta para dashboard de métricas
+@app.get("/metrics")
+def serve_metrics_dashboard():
+    return FileResponse("../frontend/pages/metrics.html")
+
+@app.get("/pages/metrics")
+def serve_metrics_pages():
+    return FileResponse("../frontend/pages/metrics.html")
 
 @app.on_event("startup")
 async def startup_event():
@@ -125,6 +187,7 @@ class Pregunta(BaseModel):
     userId: str = None
     chatToken: str = None
     history: list = None
+    modelo: str = None  # Nuevo campo para el modelo seleccionado
 
 class SessionIn(BaseModel):
     user_id: str
@@ -252,25 +315,60 @@ async def check_connection():
 # Endpoint básico de preguntas
 @app.post("/preguntar")
 async def preguntar_basic(pregunta: Pregunta):
+    request_id = None
     try:
         start_time = time.time()
         respuesta = None
+        
+        # FASE 1: Iniciar tracking de métricas
+        if METRICS_ENABLED:
+            model_used = pregunta.modelo or "llama3"
+            request_id = start_request_tracking(
+                endpoint="/preguntar",
+                model_used=model_used,
+                user_id=pregunta.userId or "anonymous",
+                question_length=len(pregunta.texto)
+            )
+            logger.info(f"📊 Tracking iniciado: {request_id}")
         
         # Verificar si el sistema IA está listo
         if ai_system_ready and ai_system_instance:
             try:
                 logger.info(f"Procesando pregunta con IA: {pregunta.texto}")
                 
+                # Tracking de tiempo de vector search y LLM
+                vector_start = time.time()
+                
                 # Ejecutar procesamiento de pregunta
                 loop = asyncio.get_event_loop()
                 respuesta = await loop.run_in_executor(executor, ai_system_instance.process_question, pregunta)
                 
+                vector_time = time.time() - vector_start
                 processing_time = time.time() - start_time
+                
                 logger.info(f"Respuesta IA generada en {processing_time:.2f}s")
+                
+                # FASE 1: Finalizar tracking exitoso
+                if METRICS_ENABLED and request_id:
+                    end_request_tracking(
+                        request_id=request_id,
+                        status="success",
+                        response_length=len(respuesta) if respuesta else 0,
+                        vector_search_time=vector_time,
+                        llm_processing_time=processing_time
+                    )
                     
             except Exception as ai_error:
                 logger.error(f"Error en sistema IA: {ai_error}")
                 respuesta = None
+                
+                # FASE 1: Tracking de error en IA
+                if METRICS_ENABLED and request_id:
+                    end_request_tracking(
+                        request_id=request_id,
+                        status="error",
+                        error_details=f"AI Error: {str(ai_error)[:200]}"
+                    )
         else:
             logger.info("Sistema IA no disponible, usando respuesta básica")
         
@@ -278,6 +376,15 @@ async def preguntar_basic(pregunta: Pregunta):
         if not respuesta:
             respuesta = generar_respuesta_rapida(pregunta.texto)
             logger.info("Usando respuesta básica")
+            
+            # FASE 1: Tracking de respuesta básica
+            if METRICS_ENABLED and request_id:
+                end_request_tracking(
+                    request_id=request_id,
+                    status="fallback",
+                    response_length=len(respuesta),
+                    error_details="AI system not available - fallback response"
+                )
         
         # Validar que la respuesta no esté vacía
         if not respuesta or respuesta.strip() == "":
@@ -297,6 +404,15 @@ async def preguntar_basic(pregunta: Pregunta):
         
     except Exception as e:
         logger.error(f"Error en preguntar_basic: {e}")
+        
+        # FASE 1: Tracking de error general
+        if METRICS_ENABLED and request_id:
+            end_request_tracking(
+                request_id=request_id,
+                status="error",
+                error_details=f"General Error: {str(e)[:200]}"
+            )
+        
         return {"respuesta": "Lo siento, ocurrió un error inesperado. Por favor, inténtalo de nuevo.", "status": "error"}
 
 @app.get("/ai_status")
@@ -356,6 +472,85 @@ async def get_ai_diagnostics():
             "error": str(e),
             "basic_info": get_ai_system_info()
         }
+
+# Nuevos endpoints para gestión de modelos
+@app.get("/models/available")
+async def get_available_models():
+    """Retorna los modelos disponibles"""
+    global ai_system_instance
+    try:
+        if ai_system_instance:
+            from config import AVAILABLE_MODELS
+            return {
+                "models": AVAILABLE_MODELS,
+                "current_model": ai_system_instance.get_current_model()
+            }
+        else:
+            from config import AVAILABLE_MODELS, DEFAULT_MODEL
+            return {
+                "models": AVAILABLE_MODELS,
+                "current_model": DEFAULT_MODEL
+            }
+    except Exception as e:
+        logger.error(f"Error obteniendo modelos: {e}")
+        return {"error": str(e), "models": {}, "current_model": None}
+
+@app.post("/models/switch")
+async def switch_model(request: Request):
+    """Cambia el modelo activo"""
+    global ai_system_instance
+    try:
+        data = await request.json()
+        model_name = data.get("model")
+        
+        if not model_name:
+            return {"success": False, "error": "Modelo no especificado"}
+            
+        if ai_system_instance:
+            # FASE 1: Registrar cambio de modelo en métricas
+            current_model = ai_system_instance.get_current_model()
+            if METRICS_ENABLED:
+                record_model_switch(current_model, model_name)
+            
+            success = ai_system_instance.switch_model(model_name)
+            if success:
+                # Obtener estado del contexto después del cambio
+                context_status = ai_system_instance.get_context_status()
+                return {
+                    "success": True, 
+                    "message": f"Modelo cambiado a {model_name}",
+                    "current_model": ai_system_instance.get_current_model(),
+                    "context_status": context_status
+                }
+            else:
+                return {"success": False, "error": f"Error cambiando modelo a {model_name}"}
+        else:
+            return {"success": False, "error": "Sistema IA no inicializado"}
+            
+    except Exception as e:
+        logger.error(f"Error cambiando modelo: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/models/context_status")
+async def get_context_status():
+    """Retorna el estado actual del contexto del sistema"""
+    global ai_system_instance
+    try:
+        if ai_system_instance:
+            status = ai_system_instance.get_context_status()
+            return {
+                "success": True,
+                "context_status": status
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Sistema IA no inicializado",
+                "context_status": {}
+            }
+    except Exception as e:
+        logger.error(f"Error obteniendo estado del contexto: {e}")
+        return {"success": False, "error": str(e), "context_status": {}}
 
 # Endpoint optimizado para historial que no interfiera
 @app.get("/chat/history")
@@ -557,6 +752,15 @@ async def register_basic(request: Request):
         
         if not all([nombre, email, password]):
             return {"success": False, "message": "Todos los campos son requeridos"}
+        
+        # DEBUG: Ver qué está llegando
+        logger.info(f"🔍 DEBUG - Password recibido: longitud={len(password)}, bytes={len(password.encode('utf-8'))}")
+        
+        # Bcrypt tiene un límite de 72 BYTES - truncar INMEDIATAMENTE
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            password = password_bytes.decode('utf-8', errors='ignore')
         
         try:
             from models import SessionLocal, User, pwd_context
@@ -935,19 +1139,622 @@ def get_ai_system_info():
                 "fragmentos_count": 0,
                 "llm_available": False,
                 "cadena_available": False,
-                "is_ready": False
+                "error_details": "Sistema no disponible"
             }
     except Exception as e:
-        logger.error(f"Error obteniendo info del sistema IA: {e}")
         return {
+            "error": str(e),
             "using_chroma": False,
             "using_vector_db": False,
             "documentos_count": 0,
             "fragmentos_count": 0,
             "llm_available": False,
-            "cadena_available": False,
-            "is_ready": False
+            "cadena_available": False
         }
+
+# ===============================================
+# ENDPOINTS DE MÉTRICAS - FASE 1
+# ===============================================
+
+@app.get("/metrics/summary")
+async def get_metrics_summary_endpoint():
+    """Obtiene resumen completo de métricas del sistema"""
+    try:
+        if not METRICS_ENABLED:
+            return {"error": "Sistema de métricas no disponible", "enabled": False}
+        
+        summary = get_metrics_summary()
+        return {
+            "success": True,
+            "enabled": True,
+            "data": summary,
+            "message": "Métricas obtenidas exitosamente"
+        }
+    except Exception as e:
+        logger.error(f"Error obteniendo métricas: {e}")
+        return {"success": False, "error": str(e), "enabled": METRICS_ENABLED}
+
+@app.get("/metrics/bottlenecks")
+async def get_bottleneck_analysis_endpoint():
+    """Analiza cuellos de botella y recomienda optimizaciones"""
+    try:
+        if not METRICS_ENABLED:
+            return {"error": "Sistema de métricas no disponible", "enabled": False}
+        
+        analysis = get_bottleneck_analysis()
+        return {
+            "success": True,
+            "enabled": True,
+            "analysis": analysis,
+            "message": "Análisis de cuellos de botella completado"
+        }
+    except Exception as e:
+        logger.error(f"Error analizando cuellos de botella: {e}")
+        return {"success": False, "error": str(e), "enabled": METRICS_ENABLED}
+
+@app.get("/metrics/performance")
+async def get_performance_metrics():
+    """Obtiene métricas específicas de rendimiento"""
+    try:
+        if not METRICS_ENABLED:
+            return {"error": "Sistema de métricas no disponible", "enabled": False}
+        
+        summary = get_metrics_summary()
+        
+        # Extraer solo métricas de rendimiento
+        performance_data = {
+            "response_times": summary.get("performance", {}),
+            "system_resources": summary.get("system", {}),
+            "model_performance": summary.get("models", {}),
+            "active_requests": summary.get("general", {}).get("active_requests", 0),
+            "error_rate": summary.get("general", {}).get("error_rate", 0),
+            "timestamp": summary.get("timestamp")
+        }
+        
+        return {
+            "success": True,
+            "enabled": True,
+            "performance": performance_data,
+            "recommendations": get_performance_recommendations(performance_data)
+        }
+    except Exception as e:
+        logger.error(f"Error obteniendo métricas de rendimiento: {e}")
+        return {"success": False, "error": str(e), "enabled": METRICS_ENABLED}
+
+@app.get("/metrics/queue-readiness")
+async def get_queue_readiness():
+    """Evalúa si el sistema está listo para implementar colas"""
+    try:
+        if not METRICS_ENABLED:
+            return {"error": "Sistema de métricas no disponible", "enabled": False}
+        
+        bottleneck_analysis = get_bottleneck_analysis()
+        summary = get_metrics_summary()
+        
+        # Criterios para determinar necesidad de cola
+        queue_criteria = {
+            "high_response_times": summary.get("performance", {}).get("avg_response_time_hour", 0) > 3.0,
+            "high_error_rate": summary.get("general", {}).get("error_rate", 0) > 5.0,
+            "many_active_requests": summary.get("general", {}).get("active_requests", 0) > 3,
+            "high_cpu_usage": summary.get("system", {}).get("cpu_percent", 0) > 70,
+            "slow_requests_detected": len([r for r in bottleneck_analysis.get("performance_analysis", {}).get("slow_requests_count", 0)]) > 5
+        }
+        
+        needs_queue = any(queue_criteria.values())
+        
+        priority_level = "ALTA" if sum(queue_criteria.values()) >= 3 else "MEDIA" if any(queue_criteria.values()) else "BAJA"
+        
+        recommendations = []
+        if queue_criteria["high_response_times"]:
+            recommendations.append("🚀 Implementar cola de prioridad para requests lentas")
+        if queue_criteria["high_error_rate"]:
+            recommendations.append("🔄 Sistema de reintentos con backoff exponencial")
+        if queue_criteria["many_active_requests"]:
+            recommendations.append("⚡ Pool de workers dedicados")
+        if queue_criteria["high_cpu_usage"]:
+            recommendations.append("💻 Distribución de carga entre procesos")
+        
+        return {
+            "success": True,
+            "queue_readiness": {
+                "needs_queue": needs_queue,
+                "priority_level": priority_level,
+                "criteria_met": queue_criteria,
+                "recommendations": recommendations,
+                "estimated_improvement": "30-60% reducción en tiempo de respuesta" if needs_queue else "Mejoras menores esperadas",
+                "next_phase_ready": needs_queue
+            },
+            "current_metrics": {
+                "avg_response_time": summary.get("performance", {}).get("avg_response_time_hour", 0),
+                "error_rate": summary.get("general", {}).get("error_rate", 0),
+                "active_requests": summary.get("general", {}).get("active_requests", 0),
+                "cpu_usage": summary.get("system", {}).get("cpu_percent", 0)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error evaluando readiness para cola: {e}")
+        return {"success": False, "error": str(e), "enabled": METRICS_ENABLED}
+
+def get_performance_recommendations(performance_data):
+    """Genera recomendaciones basadas en métricas de rendimiento"""
+    recommendations = []
+    
+    avg_time = performance_data.get("response_times", {}).get("avg_response_time_hour", 0)
+    error_rate = performance_data.get("error_rate", 0)
+    cpu_usage = performance_data.get("system_resources", {}).get("cpu_percent", 0)
+    memory_usage = performance_data.get("system_resources", {}).get("memory_percent", 0)
+    
+    if avg_time > 5:
+        recommendations.append("⏱️ Tiempos de respuesta altos - considerar optimización de consultas")
+    if avg_time > 10:
+        recommendations.append("🚨 Tiempos críticos - implementar cola urgentemente")
+    
+    if error_rate > 5:
+        recommendations.append("🔧 Alta tasa de errores - revisar estabilidad del sistema")
+    if error_rate > 10:
+        recommendations.append("⚠️ Tasa de errores crítica - implementar circuit breaker")
+    
+    if cpu_usage > 80:
+        recommendations.append("🔥 CPU sobrecargado - distribuir carga")
+    if memory_usage > 85:
+        recommendations.append("💾 Memoria alta - optimizar cache y liberación de recursos")
+    
+    if not recommendations:
+        recommendations.append("✅ Sistema funcionando dentro de parámetros normales")
+    
+    return recommendations
+
+# ===============================================
+# ENDPOINTS ASINCRÓNICOS - FASE 1
+# ===============================================
+
+# Modelos para endpoints asincrónicos
+class AsyncChatRequest(BaseModel):
+    texto: str
+    userId: str = None
+    chatToken: str = None
+    modelo: str = None
+    conversation_id: str = None
+
+class AsyncChatResponse(BaseModel):
+    task_id: str
+    status: str
+    message: str
+    estimated_time: int = None
+
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    result: dict = None
+    progress: int = None
+    error: str = None
+
+@app.post("/chat/async", response_model=AsyncChatResponse)
+async def chat_async(request: AsyncChatRequest):
+    """
+    Endpoint asincrónico para procesamiento de chat
+    Retorna task_id inmediatamente, procesamiento en segundo plano
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        # Fallback al método sincrónico si Celery no está disponible
+        return await fallback_to_sync_chat(request)
+    
+    try:
+        # Generar ID único para la conversación si no se proporciona
+        conversation_id = request.conversation_id or str(uuid.uuid4())
+        
+        # Enviar tarea a Celery worker
+        task = celery_app.send_task(
+            'celery_worker.process_chat_task',
+            args=[
+                request.texto,
+                request.modelo,
+                conversation_id
+            ],
+            kwargs={},
+            task_id=str(uuid.uuid4())
+        )
+        
+        logger.info(f"🚀 Tarea async creada: {task.id}")
+        logger.info(f"   - Input: {request.texto[:50]}...")
+        logger.info(f"   - Modelo: {request.modelo or 'default'}")
+        logger.info(f"   - Usuario: {conversation_id[:8]}...")
+        logger.info(f"   - 📤 Enviada a worker en: {datetime.utcnow().strftime('%H:%M:%S')}")
+        
+        return AsyncChatResponse(
+            task_id=task.id,
+            status="accepted",
+            message="Consulta enviada para procesamiento asincrónico",
+            estimated_time=30
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error creando tarea async: {e}")
+        # Fallback al método sincrónico
+        return await fallback_to_sync_chat(request)
+
+@app.get("/chat/status/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(task_id: str):
+    """
+    Obtener el estado de una tarea asincrónica
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="error",
+            error="Celery no disponible"
+        )
+    
+    try:
+        # Obtener resultado de Celery
+        result = AsyncResult(task_id, app=celery_app)
+        
+        # Log de consulta de estado
+        current_time = datetime.utcnow().strftime('%H:%M:%S')
+        logger.debug(f"📊 Status check: {task_id[:8]}... at {current_time} -> {result.state}")
+        
+        if result.state == 'PENDING':
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status="pending",
+                progress=0
+            )
+        elif result.state == 'PROCESSING':
+            progress = result.info.get('progress', 50) if result.info else 50
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status="processing",
+                progress=progress,
+                result={"status": result.info.get('status', 'Procesando...')} if result.info else None
+            )
+        elif result.state == 'SUCCESS':
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status="completed",
+                progress=100,
+                result=result.result
+            )
+        elif result.state == 'FAILURE':
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status="failed",
+                progress=0,
+                error=str(result.info)
+            )
+        else:
+            response = TaskStatusResponse(
+                task_id=task_id,
+                status=result.state.lower(),
+                progress=0
+            )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ Error obteniendo estado de tarea {task_id}: {e}")
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="error",
+            error=str(e)
+        )
+
+@app.post("/chat/stream")
+async def chat_stream(request: AsyncChatRequest):
+    """
+    Endpoint de streaming SSE para respuestas en tiempo real
+    Retorna un stream de eventos que el frontend puede consumir
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        # Fallback al método sincrónico si Celery no está disponible
+        return await fallback_to_sync_streaming(request)
+    
+    async def event_publisher():
+        try:
+            # Generar ID único para la conversación
+            conversation_id = request.conversation_id or str(uuid.uuid4())
+            
+            # Enviar evento inicial
+            yield {
+                "event": "start",
+                "data": json.dumps({
+                    "status": "started",
+                    "message": "Procesando tu consulta...",
+                    "conversation_id": conversation_id,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            }
+            
+            # Crear tarea en Celery
+            task = celery_app.send_task(
+                'celery_worker.process_chat_task',
+                args=[request.texto, request.modelo, conversation_id],
+                task_id=str(uuid.uuid4())
+            )
+            
+            logger.info(f"🌊 Streaming task creada: {task.id}")
+            
+            # Registrar tarea en la base de datos
+            try:
+                from models import SessionLocal, ChatTask, TaskStatusEnum
+                db = SessionLocal()
+                try:
+                    chat_task = ChatTask(
+                        task_id=task.id,
+                        user_id=request.userId,
+                        session_id=conversation_id,
+                        query=request.texto,
+                        query_length=len(request.texto),
+                        model=request.modelo,
+                        status=TaskStatusEnum.PENDING
+                    )
+                    db.add(chat_task)
+                    db.commit()
+                    logger.info(f"✅ Task registrada en BD: {task.id}")
+                except Exception as e:
+                    db.rollback()
+                    logger.error(f"❌ Error al registrar task en BD: {e}")
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.error(f"❌ Error al conectar con BD para registrar task: {e}")
+            
+            # Polling del estado de la tarea
+            max_wait = 1000  # segundos máximo (para consultas complejas)
+            poll_interval = 0.5  # Polling cada 500ms
+            elapsed = 0
+            
+            while elapsed < max_wait:
+                try:
+                    result = AsyncResult(task.id, app=celery_app)
+                    
+                    if result.state == 'PENDING':
+                        yield {
+                            "event": "progress", 
+                            "data": json.dumps({
+                                "status": "pending",
+                                "message": "En cola de procesamiento...",
+                                "progress": min(10, elapsed * 2)
+                            })
+                        }
+                    elif result.state == 'PROCESSING':
+                        progress = result.info.get('progress', 50) if result.info else 50
+                        yield {
+                            "event": "progress",
+                            "data": json.dumps({
+                                "status": "processing", 
+                                "message": "Generando respuesta...",
+                                "progress": progress
+                            })
+                        }
+                    elif result.state == 'SUCCESS':
+                        # Tarea completada exitosamente
+                        yield {
+                            "event": "complete",
+                            "data": json.dumps({
+                                "status": "completed",
+                                "result": result.result,
+                                "progress": 100,
+                                "timestamp": datetime.utcnow().isoformat()
+                            })
+                        }
+                        break
+                    elif result.state == 'FAILURE':
+                        # Error en la tarea
+                        yield {
+                            "event": "error",
+                            "data": json.dumps({
+                                "status": "failed",
+                                "error": str(result.info),
+                                "timestamp": datetime.utcnow().isoformat()
+                            })
+                        }
+                        break
+                        
+                    await asyncio.sleep(poll_interval)
+                    elapsed += poll_interval
+                    
+                except Exception as poll_error:
+                    logger.error(f"❌ Error en polling: {poll_error}")
+                    yield {
+                        "event": "error",
+                        "data": json.dumps({
+                            "status": "error",
+                            "error": f"Error en seguimiento: {str(poll_error)}"
+                        })
+                    }
+                    break
+            
+            # Timeout si llegamos aquí
+            if elapsed >= max_wait:
+                yield {
+                    "event": "timeout",
+                    "data": json.dumps({
+                        "status": "timeout",
+                        "error": "La consulta tardó demasiado en procesarse",
+                        "task_id": task.id
+                    })
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ Error en streaming: {e}")
+            yield {
+                "event": "error",
+                "data": json.dumps({
+                    "status": "error",
+                    "error": str(e)
+                })
+            }
+    
+    return EventSourceResponse(event_publisher())
+
+async def fallback_to_sync_streaming(request: AsyncChatRequest):
+    """
+    Fallback para streaming cuando Celery no está disponible
+    """
+    async def sync_event_publisher():
+        try:
+            yield {
+                "event": "start",
+                "data": json.dumps({
+                    "status": "started",
+                    "message": "Procesando (modo sincrónico)...",
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            }
+            
+            # Simular progreso
+            for progress in [20, 40, 60, 80]:
+                yield {
+                    "event": "progress",
+                    "data": json.dumps({
+                        "status": "processing",
+                        "message": "Generando respuesta...",
+                        "progress": progress
+                    })
+                }
+                await asyncio.sleep(0.5)
+            
+            # Procesar usando el sistema sincrónico
+            conversation_id = request.conversation_id or str(uuid.uuid4())
+            
+            # Usar el procesamiento sincrónico existente
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    ai_system_instance.process_question,
+                    request.texto,
+                    request.modelo or "default"
+                )
+                result = future.result()
+            
+            yield {
+                "event": "complete",
+                "data": json.dumps({
+                    "status": "completed",
+                    "result": result,
+                    "progress": 100,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Error en fallback streaming: {e}")
+            yield {
+                "event": "error",
+                "data": json.dumps({
+                    "status": "error",
+                    "error": str(e)
+                })
+            }
+    
+    return EventSourceResponse(sync_event_publisher())
+
+@app.post("/chat/switch_model_async")
+async def switch_model_async(model_name: str):
+    """
+    Cambiar modelo de forma asincrónica
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        return {"error": "Celery no disponible", "success": False}
+    
+    try:
+        task = celery_app.send_task(
+            'chatbot_worker.switch_model_task',
+            args=[model_name],
+            task_id=str(uuid.uuid4())
+        )
+        
+        logger.info(f"🔄 Cambio de modelo async iniciado: {model_name} (Tarea: {task.id})")
+        
+        return {
+            "task_id": task.id,
+            "status": "accepted",
+            "message": f"Cambio a modelo {model_name} iniciado",
+            "success": True
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error iniciando cambio de modelo: {e}")
+        return {"error": str(e), "success": False}
+
+@app.get("/health/celery")
+async def celery_health_check():
+    """
+    Health check para el sistema Celery
+    """
+    if not CELERY_AVAILABLE or not celery_app:
+        return {
+            "status": "unavailable",
+            "celery_available": False,
+            "message": "Celery no está configurado"
+        }
+    
+    try:
+        # Enviar tarea de health check
+        task = celery_app.send_task('celery_worker.health_check_task')
+        
+        # Esperar resultado por máximo 5 segundos
+        try:
+            result = task.get(timeout=5)
+            return {
+                "status": "healthy",
+                "celery_available": True,
+                "worker_status": result,
+                "message": "Sistema Celery funcionando correctamente"
+            }
+        except Exception as timeout_error:
+            return {
+                "status": "timeout",
+                "celery_available": True,
+                "message": "Worker no responde (puede estar ocupado)",
+                "error": str(timeout_error)
+            }
+            
+    except Exception as e:
+        logger.error(f"❌ Error en health check de Celery: {e}")
+        return {
+            "status": "error",
+            "celery_available": CELERY_AVAILABLE,
+            "message": "Error conectando con Celery",
+            "error": str(e)
+        }
+
+async def fallback_to_sync_chat(request: AsyncChatRequest):
+    """
+    Fallback al método sincrónico cuando Celery no está disponible
+    """
+    logger.warning("🔄 Usando fallback sincrónico para chat")
+    
+    try:
+        # Simular el comportamiento asincrónico pero ejecutar sincrónicamente
+        pregunta = Pregunta(
+            texto=request.texto,
+            userId=request.userId,
+            chatToken=request.chatToken,
+            modelo=request.modelo
+        )
+        
+        # Usar el endpoint existente
+        result = await preguntar_basic(pregunta)
+        
+        # Simular respuesta asincrónica
+        task_id = str(uuid.uuid4())
+        return AsyncChatResponse(
+            task_id=task_id,
+            status="completed_sync",
+            message="Procesado sincrónicamente (Celery no disponible)"
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error en fallback sincrónico: {e}")
+        return AsyncChatResponse(
+            task_id="error",
+            status="error",
+            message=f"Error en procesamiento: {str(e)}"
+        )
+
+# ===============================================
+# CONFIGURACIÓN Y STARTUP DEL SERVIDOR
+# ===============================================
 
 # Inicialización del servidor
 if __name__ == "__main__":

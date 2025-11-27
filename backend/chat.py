@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
+from datetime import datetime
 from database import engine
 from models import SolicitudSugerencias
 from ai_system import ai_system

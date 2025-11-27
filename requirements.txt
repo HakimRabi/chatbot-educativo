@@ -1,37 +1,65 @@
-# Core dependencies for LangChain and Ollama
-langchain==0.1.20
-langchain-ollama==0.1.0
-langchain-community==0.0.38
-langchain-chroma==0.1.0
+# Core dependencies for LangChain and Ollama (Updated for Python 3.13)
+langchain>=0.3.0
+langchain-ollama
+langchain-community
+langchain-chroma
+ollama
 
 # Vector databases
-chromadb==0.4.24
-faiss-cpu==1.7.4
+chromadb
+faiss-cpu
 
 # Document processing
-pypdf==3.17.4
+pypdf
 
 # Text processing and embeddings
-sentence-transformers==2.2.2
-transformers==4.36.2
+sentence-transformers
+transformers
 
 # Utilities and system
-python-dotenv==1.0.0
-requests==2.31.0
-numpy==1.24.3
-pandas==2.0.3
+python-dotenv==1.0.1
 
-# Logging and debugging
-colorlog==6.8.0
+# Authentication and security
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.0
+python-multipart==0.0.17
+python-jose[cryptography]==3.3.0
+
+# Database
+PyMySQL
+SQLAlchemy
 
 # Optional dependencies for better performance
-torch==2.1.2
-tokenizers==0.15.0
+torch
 
-# System dependencies
-sqlite3-binary==0.5.2
-pysqlite3==0.5.2
+# System dependencies (Updated)
+# sqlite3-binary==0.5.2  # Not needed for Python 3.13
+# pysqlite3==0.5.2       # Not needed for Python 3.13
 
 # Development and testing (optional)
-pytest==7.4.4
-pytest-asyncio==0.21.1
+pytest==8.3.3
+pytest-asyncio==0.24.0
+
+# === ASYNC MIGRATION DEPENDENCIES ===
+# Phase 0: Async Infrastructure
+redis
+celery
+cryptography
+
+# Phase 1: FastAPI Async Support  
+uvicorn[standard]
+
+# System monitoring dependencies
+psutil>=5.9.0
+GPUtil>=1.4.0
+fastapi>=0.115.0
+pydantic
+sse-starlette
+
+# Phase 2: High-Performance Inference (vLLM)
+# Note: vLLM will be installed separately as it requires specific CUDA setup
+# vllm==0.6.2  # Uncomment after CUDA verification
+
+# Phase 3: Model Optimization
+accelerate
+bitsandbytes
